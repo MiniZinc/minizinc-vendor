@@ -11,6 +11,7 @@
 
 # CI scratch
 /cell.env
+/cell-setup.sh
 /.bazel-disk/
 /.bin/
 *.tar.gz

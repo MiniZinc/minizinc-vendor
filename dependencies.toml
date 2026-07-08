@@ -25,31 +25,39 @@ schema = 2
 #
 # `container` MUST be pinned by digest for reproducibility — resolve the
 # `@sha256:...` placeholders once and commit them (e.g.
-# `docker buildx imagetools inspect ghcr.io/minizinc/docker-build-environment:cpp`).
+# `docker buildx imagetools inspect quay.io/pypa/manylinux_2_28_x86_64`).
 # -----------------------------------------------------------------------------
+# Common public base images + a per-platform `setup` that installs build deps at
+# job time (replaces the bespoke docker-build-environment images). manylinux_2_28
+# pins a low glibc floor (2.28) — matching what the official Qt 6 Linux binaries
+# need — while being an actively-maintained upstream image.
 [platforms.linux]
 runner    = "ubuntu-24.04"
-container = "ghcr.io/minizinc/docker-build-environment:cpp"      # TODO: pin @sha256:...
+container = "quay.io/pypa/manylinux_2_28_x86_64"                 # TODO: pin @sha256:...
 mznarch   = "linux"
 triple    = "x86_64-linux-gnu"
+setup     = "dnf -y install zlib-devel patch which file 2>/dev/null || true"
 
 [platforms.linux-arm64]
 runner    = "ubuntu-24.04-arm"
-container = "ghcr.io/minizinc/docker-build-environment:cpp"      # TODO: pin @sha256:...
+container = "quay.io/pypa/manylinux_2_28_aarch64"                # TODO: pin @sha256:...
 mznarch   = "linux-arm64"
 triple    = "aarch64-linux-gnu"
+setup     = "dnf -y install zlib-devel patch which file 2>/dev/null || true"
 
 [platforms.musl]
 runner    = "ubuntu-24.04"
-container = "ghcr.io/minizinc/docker-build-environment:alpine"   # TODO: pin @sha256:...
+container = "alpine:3.20"                                        # TODO: pin @sha256:...
 mznarch   = "linux"
 triple    = "x86_64-linux-musl"
+setup     = "apk add --no-cache bash build-base cmake ninja git curl autoconf automake libtool pkgconf zlib-dev linux-headers"
 
 [platforms.musl-arm64]
 runner    = "ubuntu-24.04-arm"
-container = "ghcr.io/minizinc/docker-build-environment:alpine"   # TODO: pin @sha256:...
+container = "alpine:3.20"                                        # TODO: pin @sha256:...
 mznarch   = "linux-arm64"
 triple    = "aarch64-linux-musl"
+setup     = "apk add --no-cache bash build-base cmake ninja git curl autoconf automake libtool pkgconf zlib-dev linux-headers"
 
 [platforms.osx]
 runner    = "macos-14"          # arm64 host; arm64-only builds (Intel Macs unsupported)
@@ -75,10 +83,12 @@ triple    = "wasm32-emscripten"
 # -----------------------------------------------------------------------------
 [toolchain.coinbrew]
 # Replaces the historic unpinned `curl .../coinbrew/master/coinbrew` in cbc.sh.
-# Pinned to the latest stable coinbrew release; the bot tracks new releases.
-repo    = "https://github.com/coin-or/coinbrew"
-version = "v2.0"
-track   = { kind = "git-tags", repo = "https://github.com/coin-or/coinbrew", pattern = 'v(\d+\.\d+)' }
+# coinbrew has no recent release (last tag v2.0 is from 2022 and lacks Windows
+# fixes), so we pin a `master` commit and let the bot track the branch head —
+# matching the old CI, which used master.
+repo   = "https://github.com/coin-or/coinbrew"
+commit = "50539b4ea785cb2088366dc7f26930ec5c5b4546"
+track  = { kind = "branch-head", branch = "master" }
 
 [toolchain.bazel]
 version = "8.6.0"
@@ -105,6 +115,13 @@ track   = { kind = "bcr-module", module = "rules_pkg" }
 # Provenance only: the win64 runtime DLLs are checked in under resources/openssl-win64.
 # The bot cannot auto-bump binary DLLs, so it opens an advisory issue instead.
 version = "3.5.1"
+track   = { kind = "manual" }
+
+[toolchain.qt]
+# Qt for gecode_gist. Downloaded on the fly via aqtinstall (in-container on linux;
+# via install-qt-action on the native osx/win64 runners). Keep aligned with the
+# MiniZincIDE's Qt. Qt 6's macOS build is universal (incl. arm64).
+version = "6.5.3"
 track   = { kind = "manual" }
 
 # -----------------------------------------------------------------------------
@@ -169,10 +186,8 @@ source_of    = "gecode"         # shares gecode's exact source + commit; never p
 uses         = ["qt"]           # needs the :qt container (linux) / native Qt (osx, win64)
 artifact_dir = "gecode_gist"
 platforms    = ["linux", "osx", "win64"]   # NOT arm64 / musl / wasm
-# On linux, build in the Qt-enabled image instead of the default :cpp image.
-# On osx/win64 (native runners) the workflow installs Qt via install-qt-action.
-[deps.gecode_gist.container_override]
-linux = "ghcr.io/minizinc/docker-build-environment:qt"   # TODO: pin @sha256:...
+# Qt is installed on the fly: via aqtinstall inside the linux container, and via
+# install-qt-action on the native osx/win64 runners.
 
 [deps.chuffed]
 recipe       = "recipes/chuffed.sh"

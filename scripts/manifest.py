@@ -34,6 +34,15 @@ HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MANIFEST = os.path.join(HERE, "dependencies.toml")
 ASSET_EXT = "tar.gz"
 
+# Install Qt inside a (manylinux) container via aqtinstall for the gist build.
+# manylinux_2_28 is glibc 2.28, which the official Qt 6 Linux binaries require.
+QT_CONTAINER_SETUP = """\
+dnf -y install libxcb-devel libxkbcommon-devel mesa-libGL-devel fontconfig-devel freetype-devel libX11-devel 2>/dev/null || true
+python3 -m pip install --quiet aqtinstall
+python3 -m aqt install-qt linux desktop {ver} linux_gcc_64 --outputdir /opt/qt
+export PATH="/opt/qt/{ver}/gcc_64/bin:$PATH"
+export CMAKE_PREFIX_PATH="/opt/qt/{ver}/gcc_64:${{CMAKE_PREFIX_PATH:-}}\""""
+
 # bazelisk release asset per platform (empty => Alpine/musl uses `apk add bazel8`).
 BAZELISK_ASSET = {
     "linux": "linux-amd64",
@@ -83,12 +92,24 @@ def asset_name(m: dict, name: str, d: dict, platform: str) -> str:
     return f"{name}-{dep_version_label(d)}-{triple}.{ASSET_EXT}"
 
 
+def cell_setup(m: dict, platform: str, qt_in_container: bool) -> str:
+    """System-dependency install commands run (as POSIX sh) before the recipe."""
+    setup = m["platforms"][platform].get("setup", "")
+    if qt_in_container:
+        ver = m["toolchain"]["qt"]["version"]
+        setup = (setup + "\n" if setup else "") + QT_CONTAINER_SETUP.format(ver=ver)
+    return setup
+
+
 def build_cell(m: dict, name: str, platform: str) -> dict:
     d = resolve_dep(m, name)
     plat = m["platforms"][platform]
     container = cell_container(m, d, platform)
     uses = d.get("uses", [])
+    qt = "qt" in uses
+    qt_in_container = qt and container != ""
     env_b64 = base64.b64encode("\n".join(env_kv(m, name, platform)).encode()).decode()
+    setup_b64 = base64.b64encode(cell_setup(m, platform, qt_in_container).encode()).decode()
     return {
         "dep": name,
         "platform": platform,
@@ -101,11 +122,13 @@ def build_cell(m: dict, name: str, platform: str) -> dict:
         "artifact_dir": d["artifact_dir"],
         "release_tag": release_tag(name, d),
         "asset_name": asset_name(m, name, d, platform),
-        # Qt must be installed on the native (osx/win64) gist runners; on linux the
-        # Qt image already provides it.
-        "needs_qt": ("qt" in uses) and (container == ""),
+        # Qt on the native (osx/win64) gist runners is installed via install-qt-action;
+        # gist-in-container (linux) gets Qt via aqtinstall in the setup script.
+        "needs_qt": qt and container == "",
+        "qt_version": m["toolchain"]["qt"]["version"] if qt else "",
         "cache_kind": "bazel" if "bazel" in uses else "ccache",
         "env_b64": env_b64,
+        "setup_b64": setup_b64,
         "label": f"{name}:{platform}",
     }
 
@@ -137,7 +160,7 @@ def env_kv(m: dict, name: str, platform: str) -> list[str]:
 
     uses = d.get("uses", [])
     if "coinbrew" in uses:
-        put("COINBREW_VERSION", m["toolchain"]["coinbrew"]["version"])
+        put("COINBREW_COMMIT", m["toolchain"]["coinbrew"]["commit"])
     if "bazel" in uses:
         put("BAZEL_VERSION", m["toolchain"]["bazel"]["version"])
         bz = m["toolchain"]["bazelisk"]

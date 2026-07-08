@@ -3,21 +3,20 @@
 #
 # Inputs (from the environment, injected by the build workflow from the manifest):
 #   DEP_VERSION       CBC version, e.g. "2.10.13"       (was cbc-version.sh)
-#   COINBREW_VERSION  pinned coinbrew release tag, e.g. "v2.0"
-#                     (was an unpinned master fetch)
+#   COINBREW_COMMIT   pinned coinbrew master commit     (was an unpinned master fetch)
 #   MZNARCH           linux | linux-arm64 | osx | win64 | wasm
 #   CI_PROJECT_DIR    build root (set to $PWD by the workflow)
 set -e
 set -x
 
 : "${DEP_VERSION:?DEP_VERSION must be set}"
-: "${COINBREW_VERSION:?COINBREW_VERSION must be set}"
+: "${COINBREW_COMMIT:?COINBREW_COMMIT must be set}"
 : "${CI_PROJECT_DIR:?CI_PROJECT_DIR must be set}"
 
 # Fetch the pinned coinbrew script (reproducible; replaces the old master download).
 rm -rf coinbrew-src
 git clone --quiet https://github.com/coin-or/coinbrew coinbrew-src
-git -C coinbrew-src checkout --quiet "$COINBREW_VERSION"
+git -C coinbrew-src checkout --quiet "$COINBREW_COMMIT"
 cp coinbrew-src/coinbrew ./coinbrew
 chmod u+x coinbrew
 
@@ -50,6 +49,13 @@ fi
 
 config_opts+=" --prefix=${CI_PROJECT_DIR}/vendor/cbc"
 
+# coinbrew requires bash >= 4; macOS ships bash 3.2, so use a modern bash there.
+COINBREW_BASH="bash"
+if [[ "$MZNARCH" == "osx" ]]; then
+	brew list bash >/dev/null 2>&1 || brew install bash >/dev/null
+	COINBREW_BASH="$(brew --prefix)/bin/bash"
+fi
+
 # Fetch and build CBC
-./coinbrew --no-prompt fetch --no-third-party Cbc@${DEP_VERSION}
-./coinbrew --no-prompt build Cbc ${config_opts}
+"$COINBREW_BASH" ./coinbrew --no-prompt fetch --no-third-party Cbc@${DEP_VERSION}
+"$COINBREW_BASH" ./coinbrew --no-prompt build Cbc ${config_opts}

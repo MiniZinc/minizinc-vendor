@@ -35,7 +35,13 @@ dependency's asset for their system triple individually.
 
 - **`dependencies.toml`** — the single source of truth: pins every solver
   version/commit and every toolchain version (coinbrew, Bazel, bazelisk, rules_pkg,
-  OpenSSL), plus each platform's runner, (digest-pinnable) container, and system triple.
+  OpenSSL, Qt), plus each platform's runner, (digest-pinnable) base image, system
+  triple, and a `setup` command that installs build deps at job time.
+- **Base images** are common public ones — `manylinux_2_28` (glibc 2.28, low floor)
+  for glibc-linux, `alpine` for musl, `emscripten/emsdk` for wasm — with deps
+  installed on the runner via the platform `setup` (no bespoke build image). Qt for
+  `gecode_gist` is fetched on demand: `aqtinstall` inside the linux container, and
+  `install-qt-action` on the native osx/win64 runners.
 - **`recipes/*.sh`** — build one dependency each; versions come from the environment
   (injected from the manifest), never hard-coded.
 - **`scripts/manifest.py`** — expands the `(dependency × platform)` matrix, computes
@@ -59,8 +65,8 @@ dependency's asset for their system triple individually.
 
 ## One-time setup (TODOs before the first publish)
 
-1. **Pin container images by digest.** Replace the `# TODO: pin @sha256:...` tags in
-   `dependencies.toml` (`[platforms.*].container`, `gecode_gist.container_override`).
+1. **Pin base images by digest.** Replace the `# TODO: pin @sha256:...` tags on the
+   `[platforms.*].container` entries in `dependencies.toml`.
 2. **Fill bazelisk `sha256`** for each asset in `[toolchain.bazelisk.sha256]`.
 3. **GitHub App for bump PRs.** Register one GitHub App in the org (Contents +
    Pull requests: read/write), installed on `minizinc-vendor` and `libminizinc`, and
