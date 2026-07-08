@@ -25,6 +25,10 @@ on:
         description: "Upload built assets to the per-dep GitHub Release."
         type: boolean
         default: false
+      force:
+        description: "Rebuild even if the asset already exists (clobbers it)."
+        type: boolean
+        default: false
   workflow_dispatch:
     inputs:
       changed_deps:
@@ -33,6 +37,10 @@ on:
         default: ""
       publish:
         description: "Upload built assets to the per-dep GitHub Release."
+        type: boolean
+        default: false
+      force:
+        description: "Rebuild even if the asset already exists (clobbers it)."
         type: boolean
         default: false
 
@@ -87,7 +95,7 @@ jobs:
 
       - name: Skip if the asset is already published
         id: existing
-        if: inputs.publish
+        if: ${{ inputs.publish && !inputs.force }}
         shell: bash
         run: |
           names=$(gh release view "${{ matrix.release_tag }}" --repo "${{ github.repository }}" \

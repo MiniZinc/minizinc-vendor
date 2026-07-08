@@ -7,7 +7,12 @@ name: publish
 on:
   push:
     branches: [main]
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Rebuild every asset even if it already exists (clobbers)."
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -17,6 +22,7 @@ jobs:
     uses: ./.github/workflows/build.yml
     with:
       publish: true
+      force: ${{ github.event.inputs.force == 'true' }}
 
   # Reconcile libminizinc's per-dep pins with what vendor now publishes.
   reconcile-libminizinc:
