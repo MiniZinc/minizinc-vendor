@@ -61,14 +61,15 @@ dependency's asset for their system triple individually.
 
 1. **Pin container images by digest.** Replace the `# TODO: pin @sha256:...` tags in
    `dependencies.toml` (`[platforms.*].container`, `gecode_gist.container_override`).
-2. **Pin `coinbrew`.** Set `toolchain.coinbrew.commit` to a real commit.
-3. **Fill bazelisk `sha256`** for each asset in `[toolchain.bazelisk.sha256]`.
-4. **`CROSS_REPO_APP_TOKEN`** — a GitHub App/PAT installed on `MiniZinc/libminizinc`
-   so `publish.yml` can open bump PRs there (and so those PRs trigger libminizinc's
-   CI). `GITHUB_TOKEN` cannot write cross-repo. Publishing this repo's own releases
-   uses the built-in `GITHUB_TOKEN`.
-5. **`VENDOR_BOT_APP_TOKEN`** — App/PAT so `update-bot.yml`'s PRs trigger `pr-validate`.
-6. **Self-hosted runners (optional).** Everything starts on GitHub-hosted runners.
+2. **Fill bazelisk `sha256`** for each asset in `[toolchain.bazelisk.sha256]`.
+3. **GitHub App for bump PRs.** Register one GitHub App in the org (Contents +
+   Pull requests: read/write), installed on `minizinc-vendor` and `libminizinc`, and
+   store its App ID / private key as org secrets **`MINIZINC_BOT_APP_ID`** and
+   **`MINIZINC_BOT_APP_KEY`**. `update-bot.yml` and `publish.yml` mint short-lived
+   tokens from it so their bump PRs trigger CI (`GITHUB_TOKEN`-created PRs don't, and
+   it can't write cross-repo). Publishing this repo's own releases uses the built-in
+   `GITHUB_TOKEN`.
+4. **Self-hosted runners (optional).** Everything starts on GitHub-hosted runners.
    If `or-tools:win64` (Bazel + MSVC) exhausts the hosted disk/time, point that
    platform's `runner` in the manifest at a self-hosted label — no workflow edit needed.
 

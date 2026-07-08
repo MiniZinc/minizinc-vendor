@@ -26,10 +26,10 @@ jobs:
       list: ${{ steps.diff.outputs.list }}
       empty: ${{ steps.diff.outputs.empty }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: vendor-repo
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: MiniZinc/libminizinc
           ref: feat/github_actions
@@ -61,20 +61,27 @@ jobs:
       matrix:
         item: ${{ fromJSON(needs.reconcile-libminizinc.outputs.list) }}
     steps:
-      - uses: actions/checkout@v4
+      # App installation token for libminizinc: GITHUB_TOKEN cannot write cross-repo
+      # nor trigger the target repo's CI.
+      - uses: actions/create-github-app-token@v2
+        id: app-token
+        with:
+          app-id: ${{ secrets.MINIZINC_BOT_APP_ID }}
+          private-key: ${{ secrets.MINIZINC_BOT_APP_KEY }}
+          owner: MiniZinc
+          repositories: libminizinc
+      - uses: actions/checkout@v7
         with:
           repository: MiniZinc/libminizinc
           ref: feat/github_actions
-          # App/PAT installed on libminizinc: GITHUB_TOKEN cannot write cross-repo
-          # nor trigger the target repo's CI.
-          token: ${{ secrets.CROSS_REPO_APP_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
       - name: Bump vendor.lock line
         shell: bash
         run: |
           sed -i -E "s|^${{ matrix.item.dep }}=.*|${{ matrix.item.dep }}=${{ matrix.item.to }}|" vendor.lock
       - uses: peter-evans/create-pull-request@v6
         with:
-          token: ${{ secrets.CROSS_REPO_APP_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
           branch: bot/bump-${{ matrix.item.dep }}
           base: feat/github_actions
           title: "Bump ${{ matrix.item.dep }} to ${{ matrix.item.to }}"

@@ -46,7 +46,7 @@ jobs:
       include: ${{ steps.gen.outputs.include }}
       empty: ${{ steps.gen.outputs.empty }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0   # --changed needs history to diff against changed_ref
       - id: gen
@@ -83,7 +83,7 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Skip if the asset is already published
         id: existing
@@ -118,6 +118,10 @@ jobs:
         with:
           version: "5.15.2"
 
+      - name: Set up MSVC (win64)
+        if: steps.existing.outputs.hit != 'true' && matrix.platform == 'win64'
+        uses: ilammy/msvc-dev-cmd@v1
+
       - name: Build
         if: steps.existing.outputs.hit != 'true'
         shell: bash
@@ -131,8 +135,9 @@ jobs:
               bash "${{ matrix.recipe }}" ${{ matrix.gist }}
           else
             # Native runner (osx/win64): export the recipe env safely (values may
-            # contain spaces) without executing anything.
-            while IFS='=' read -r k v; do
+            # contain spaces) without executing anything. The `|| [ -n "$k" ]`
+            # ensures the final line is processed even without a trailing newline.
+            while IFS='=' read -r k v || [ -n "$k" ]; do
               [ -n "$k" ] && export "$k=$v"
             done < cell.env
             export CI_PROJECT_DIR="$PWD"
