@@ -1,0 +1,21 @@
+# Build outputs and fetched sources (recipes write here)
+/build/
+/vendor/
+/cbc/
+/chuffed/
+/gecode/
+/highs/
+/or-tools/
+/coinbrew
+/coinbrew-src/
+
+# CI scratch
+/cell.env
+/.bazel-disk/
+/.bin/
+*.tar.gz
+dependencies.lock.json
+
+# Python
+__pycache__/
+*.pyc

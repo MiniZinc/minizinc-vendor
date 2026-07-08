@@ -1,0 +1,68 @@
+name: upstream-update
+
+# Dependabot-style bot: weekly, resolve the newest upstream version of every
+# tracked dependency/toolchain and open ONE PR per outdated entry. Each PR edits
+# a single pin in dependencies.toml; pr-validate.yml then rebuilds just that dep.
+#
+# Custom (not native Dependabot) because no Dependabot ecosystem covers "newest
+# git tag of an arbitrary C++ solver" / "head of a tracked branch" / a bespoke
+# TOML lockfile.
+
+on:
+  schedule:
+    - cron: "0 6 * * 1"   # Mondays 06:00 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    outputs:
+      list: ${{ steps.check.outputs.list }}
+      empty: ${{ steps.check.outputs.empty }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: check
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}   # for github-release lookups
+        shell: bash
+        run: |
+          list=$(python3 scripts/update_check.py check --json)
+          echo "list=$list" >> "$GITHUB_OUTPUT"
+          [ "$list" = "[]" ] && echo "empty=true" >> "$GITHUB_OUTPUT" || echo "empty=false" >> "$GITHUB_OUTPUT"
+          echo "$list" | python3 -m json.tool
+
+  propose:
+    needs: check
+    if: needs.check.outputs.empty == 'false'
+    permissions:
+      contents: write
+      pull-requests: write
+    strategy:
+      max-parallel: 1        # avoid create-pull-request races on the same base
+      matrix:
+        item: ${{ fromJSON(needs.check.outputs.list) }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply bump
+        run: python3 scripts/update_check.py apply --name "${{ matrix.item.name }}" --to "${{ matrix.item.latest }}"
+      - uses: peter-evans/create-pull-request@v6
+        with:
+          # App token so the PR triggers pr-validate (GITHUB_TOKEN-created PRs don't).
+          token: ${{ secrets.VENDOR_BOT_APP_TOKEN }}
+          branch: bot/bump-${{ matrix.item.name }}
+          title: "Bump ${{ matrix.item.name }} to ${{ matrix.item.latest }}"
+          body: |
+            Automated update of `${{ matrix.item.name }}`.
+
+            | | |
+            |-|-|
+            | current | `${{ matrix.item.current }}` |
+            | latest  | `${{ matrix.item.latest }}` |
+
+            CI rebuilds only this dependency and validates it before merge.
+          labels: dependencies
+          commit-message: "Bump ${{ matrix.item.name }} to ${{ matrix.item.latest }}"

@@ -1,0 +1,47 @@
+load("@bazel_skylib//rules:expand_template.bzl", "expand_template")
+load("@rules_pkg//pkg:install.bzl", "pkg_install")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_attributes", "pkg_files")
+
+pkg_files(
+    name = "fzn_cp_sat_bin_pkg",
+    srcs = [":fz"],
+    attributes = pkg_attributes(mode = "0755"),
+    renames = select({
+        "@platforms//os:windows": {":fz": "fzn-cp-sat.exe"},
+        "//conditions:default": {":fz": "fzn-cp-sat"},
+    }),
+    prefix = "bin",
+)
+
+pkg_files(
+    name = "fzn_cp_sat_mznlib_pkg",
+    srcs = ["//ortools/flatzinc/mznlib:minizinc_files"],
+    attributes = pkg_attributes(mode = "0644"),
+    prefix = "share/minizinc/cp-sat",
+)
+
+expand_template(
+    name = "fzn_cp_sat_msc_template",
+    template = "cp-sat.msc.in",
+    out = "cp-sat.msc",
+    substitutions = { "@PROJECT_VERSION@": module_version() } | 
+        select({
+            "@platforms//os:windows": { "@FZ_REL_INSTALL_BINARY@": "../../../bin/fzn-cp-sat.exe"},
+            "//conditions:default": { "@FZ_REL_INSTALL_BINARY@": "../../../bin/fzn-cp-sat"},
+        }),
+)
+
+pkg_files(
+    name = "fzn_cp_sat_msc_pkg",
+    srcs = [":fzn_cp_sat_msc_template"],
+    attributes = pkg_attributes(mode = "0644"),
+    renames = {
+        ":fzn_cp_sat_msc_template": "cp-sat.msc",
+    },
+    prefix = "share/minizinc/solvers",
+)
+
+pkg_install(
+    name = "fzn_cp_sat",
+    srcs = [":fzn_cp_sat_bin_pkg", ":fzn_cp_sat_mznlib_pkg", ":fzn_cp_sat_msc_pkg"],
+)

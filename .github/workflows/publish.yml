@@ -1,0 +1,91 @@
+name: publish
+
+# On a merged manifest change, build & publish any missing per-dependency release
+# assets, then open one "bump" PR per dependency in each consumer whose pin is
+# behind. Currently the only consumer is libminizinc.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    uses: ./.github/workflows/build.yml
+    with:
+      publish: true
+
+  # Reconcile libminizinc's per-dep pins with what vendor now publishes.
+  reconcile-libminizinc:
+    needs: publish
+    runs-on: ubuntu-24.04
+    outputs:
+      list: ${{ steps.diff.outputs.list }}
+      empty: ${{ steps.diff.outputs.empty }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: vendor-repo
+      - uses: actions/checkout@v4
+        with:
+          repository: MiniZinc/libminizinc
+          ref: feat/github_actions
+          path: libminizinc
+      - id: diff
+        shell: bash
+        run: |
+          # For each dep libminizinc pins, compare to vendor's published version.
+          declare -A vend
+          while read -r dep ver; do vend[$dep]=$ver; done < <(python3 vendor-repo/scripts/manifest.py versions)
+          items='[]'
+          while IFS='=' read -r dep ver; do
+            case "$dep" in ''|\#*) continue;; esac
+            new="${vend[$dep]:-}"
+            if [ -n "$new" ] && [ "$new" != "$ver" ]; then
+              items=$(echo "$items" | python3 -c "import sys,json;a=json.load(sys.stdin);a.append({'dep':'$dep','from':'$ver','to':'$new'});print(json.dumps(a))")
+            fi
+          done < <(grep -E '^[a-zA-Z0-9_-]+=' libminizinc/vendor.lock)
+          echo "list=$items" >> "$GITHUB_OUTPUT"
+          [ "$items" = "[]" ] && echo "empty=true" >> "$GITHUB_OUTPUT" || echo "empty=false" >> "$GITHUB_OUTPUT"
+          echo "$items" | python3 -m json.tool
+
+  propose-libminizinc:
+    needs: reconcile-libminizinc
+    if: needs.reconcile-libminizinc.outputs.empty == 'false'
+    runs-on: ubuntu-24.04
+    strategy:
+      max-parallel: 1
+      matrix:
+        item: ${{ fromJSON(needs.reconcile-libminizinc.outputs.list) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: MiniZinc/libminizinc
+          ref: feat/github_actions
+          # App/PAT installed on libminizinc: GITHUB_TOKEN cannot write cross-repo
+          # nor trigger the target repo's CI.
+          token: ${{ secrets.CROSS_REPO_APP_TOKEN }}
+      - name: Bump vendor.lock line
+        shell: bash
+        run: |
+          sed -i -E "s|^${{ matrix.item.dep }}=.*|${{ matrix.item.dep }}=${{ matrix.item.to }}|" vendor.lock
+      - uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.CROSS_REPO_APP_TOKEN }}
+          branch: bot/bump-${{ matrix.item.dep }}
+          base: feat/github_actions
+          title: "Bump ${{ matrix.item.dep }} to ${{ matrix.item.to }}"
+          body: |
+            Automated bump of the pinned `${{ matrix.item.dep }}` vendor build.
+
+            | | |
+            |-|-|
+            | from | `${{ matrix.item.from }}` |
+            | to   | `${{ matrix.item.to }}` |
+
+            CI validates the compiler against the new build before merge.
+          labels: dependencies
+          commit-message: "Bump ${{ matrix.item.dep }} to ${{ matrix.item.to }}"

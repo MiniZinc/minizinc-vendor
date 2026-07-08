@@ -1,0 +1,23 @@
+name: pr-validate
+
+# On a PR that touches the manifest, a recipe, or resources, build only the
+# affected dependencies to prove they build at their new pin. Nothing is
+# published — a merge to main (publish.yml) does that.
+
+on:
+  pull_request:
+    paths:
+      - dependencies.toml
+      - recipes/**
+      - resources/**
+      - scripts/**
+
+permissions:
+  contents: read
+
+jobs:
+  changed:
+    uses: ./.github/workflows/build.yml
+    with:
+      changed_ref: ${{ github.event.pull_request.base.sha }}
+      publish: false

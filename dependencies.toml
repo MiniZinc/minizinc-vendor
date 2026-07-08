@@ -1,0 +1,185 @@
+# =============================================================================
+# minizinc-vendor dependency manifest — the single source of truth.
+#
+# Every third-party solver AND build-toolchain version that minizinc-vendor builds
+# is pinned here. Each (dependency, platform) build is published as an asset on a
+# per-dependency GitHub Release tagged `<dep>-<version>`, so consumers pin and
+# download each dependency individually. Nothing floats.
+#
+# Tooling:
+#   - manifest.py     : expands the (dependency x platform) build matrix and the
+#                       release-tag / asset-name for each cell.
+#   - update_check.py : the Dependabot-style upstream-update bot.
+#
+# Fields the update bot rewrites in place live on their OWN line (never inside an
+# inline table): `version` for tag-tracked deps, `commit` for branch-tracked deps.
+# =============================================================================
+
+schema = 2
+
+# -----------------------------------------------------------------------------
+# Platforms. `platform` is the internal (libc-aware) build id; `triple` is the
+# public system identifier used in release asset names and by consumers. Note
+# `mznarch` is only a recipe input and is NOT the platform identity (musl maps to
+# mznarch "linux", matching the historic GitLab behaviour).
+#
+# `container` MUST be pinned by digest for reproducibility — resolve the
+# `@sha256:...` placeholders once and commit them (e.g.
+# `docker buildx imagetools inspect ghcr.io/minizinc/docker-build-environment:cpp`).
+# -----------------------------------------------------------------------------
+[platforms.linux]
+runner    = "ubuntu-24.04"
+container = "ghcr.io/minizinc/docker-build-environment:cpp"      # TODO: pin @sha256:...
+mznarch   = "linux"
+triple    = "x86_64-linux-gnu"
+
+[platforms.linux-arm64]
+runner    = "ubuntu-24.04-arm"
+container = "ghcr.io/minizinc/docker-build-environment:cpp"      # TODO: pin @sha256:...
+mznarch   = "linux-arm64"
+triple    = "aarch64-linux-gnu"
+
+[platforms.musl]
+runner    = "ubuntu-24.04"
+container = "ghcr.io/minizinc/docker-build-environment:alpine"   # TODO: pin @sha256:...
+mznarch   = "linux"
+triple    = "x86_64-linux-musl"
+
+[platforms.musl-arm64]
+runner    = "ubuntu-24.04-arm"
+container = "ghcr.io/minizinc/docker-build-environment:alpine"   # TODO: pin @sha256:...
+mznarch   = "linux-arm64"
+triple    = "aarch64-linux-musl"
+
+[platforms.osx]
+runner    = "macos-14"          # arm64 host; arm64-only builds (Intel Macs unsupported)
+container = ""                  # native (no container)
+mznarch   = "osx"
+triple    = "aarch64-apple-darwin"
+
+[platforms.win64]
+runner    = "windows-2022"
+container = ""                  # native
+mznarch   = "win64"
+triple    = "x86_64-windows"
+
+[platforms.wasm]
+runner    = "ubuntu-24.04"
+container = "emscripten/emsdk:3.1.64"   # TODO: pin @sha256:...
+mznarch   = "wasm"
+triple    = "wasm32-emscripten"
+
+# -----------------------------------------------------------------------------
+# Toolchain. Pinned build tooling that is not itself a shipped solver but whose
+# version changes the produced binaries. Tracked by the update bot.
+# -----------------------------------------------------------------------------
+[toolchain.coinbrew]
+# Replaces the historic unpinned `curl .../coinbrew/master/coinbrew` in cbc.sh.
+# Pinned to the latest stable coinbrew release; the bot tracks new releases.
+repo    = "https://github.com/coin-or/coinbrew"
+version = "v2.0"
+track   = { kind = "git-tags", repo = "https://github.com/coin-or/coinbrew", pattern = 'v(\d+\.\d+)' }
+
+[toolchain.bazel]
+version = "8.6.0"
+track   = { kind = "github-release", repo = "bazelbuild/bazel", pattern = '^(\d+\.\d+\.\d+)$' }
+
+[toolchain.bazelisk]
+version = "v1.28.1"
+track   = { kind = "github-release", repo = "bazelbuild/bazelisk", pattern = '^v(\d+\.\d+\.\d+)$' }
+# sha256 of each release asset, verified before use. TODO: fill real digests.
+[toolchain.bazelisk.sha256]
+"linux-amd64"   = "TODO"
+"linux-arm64"   = "TODO"
+"darwin-amd64"  = "TODO"
+"darwin-arm64"  = "TODO"
+"windows-amd64" = "TODO"
+
+[toolchain.rules_pkg]
+# Consumed via resources/or-tools/MODULE.bazel (bazel_dep). Kept here for tracking;
+# a bump must also edit resources/or-tools/MODULE.bazel.
+version = "1.2.0"
+track   = { kind = "bcr-module", module = "rules_pkg" }
+
+[toolchain.openssl]
+# Provenance only: the win64 runtime DLLs are checked in under resources/openssl-win64.
+# The bot cannot auto-bump binary DLLs, so it opens an advisory issue instead.
+version = "3.5.1"
+track   = { kind = "manual" }
+
+# -----------------------------------------------------------------------------
+# Dependencies (solvers). Each declares its recipe, the pinned version/commit, and
+# which platforms it builds on. Real gaps are encoded explicitly (gecode_gist: no
+# arm64/musl/wasm; or-tools: no wasm).
+# -----------------------------------------------------------------------------
+
+[deps.cbc]
+recipe       = "recipes/cbc.sh"
+version      = "2.10.13"
+repo         = "https://github.com/coin-or/Cbc"
+source       = "coinbrew"               # fetched via coinbrew, not a plain git clone
+uses         = ["coinbrew"]
+artifact_dir = "cbc"
+platforms    = ["linux", "linux-arm64", "musl", "musl-arm64", "osx", "win64", "wasm"]
+track        = { kind = "git-tags", repo = "https://github.com/coin-or/Cbc", pattern = 'releases/(\d+\.\d+\.\d+)' }
+# CBC uses coinbrew (not CMake), so arch/MSVC flags go through CFLAGS/CXXFLAGS.
+[deps.cbc.env.osx]
+CFLAGS   = "-arch arm64"
+CXXFLAGS = "-arch arm64"
+[deps.cbc.env.win64]
+CFLAGS   = "-MD -O2"
+CXXFLAGS = "-MD -O2"
+
+[deps.highs]
+recipe       = "recipes/highs.sh"
+version      = "v1.15.1"
+repo         = "https://github.com/ERGO-Code/HiGHS"
+source       = "git"
+artifact_dir = "highs"
+platforms    = ["linux", "linux-arm64", "musl", "musl-arm64", "osx", "win64", "wasm"]
+track        = { kind = "git-tags", repo = "https://github.com/ERGO-Code/HiGHS", pattern = 'v(\d+\.\d+\.\d+)' }
+
+[deps.or-tools]
+recipe       = "recipes/or-tools.sh"
+version      = "v9.15"
+repo         = "https://github.com/google/or-tools"
+source       = "git"
+uses         = ["bazel", "bazelisk", "rules_pkg"]
+overlay      = "resources/or-tools"
+artifact_dir = "or-tools"
+platforms    = ["linux", "linux-arm64", "musl", "musl-arm64", "osx", "win64"]   # no wasm
+track        = { kind = "git-tags", repo = "https://github.com/google/or-tools", pattern = 'v(\d+\.\d+)' }
+
+[deps.gecode]
+recipe       = "recipes/gecode.sh"
+# Branch-tracked (was a git submodule on release/6.3.0). `commit` is the reproducible
+# pin used to build; `ref` tells the bot which moving branch to diff against.
+ref          = "release/6.3.0"
+commit       = "eebbc1bfaef1decd3ab6a3c583c7b55f5fe29600"
+repo         = "https://github.com/Gecode/gecode"
+source       = "git"
+artifact_dir = "gecode"
+platforms    = ["linux", "linux-arm64", "musl", "musl-arm64", "osx", "win64", "wasm"]
+track        = { kind = "branch-head", repo = "https://github.com/Gecode/gecode", branch = "release/6.3.0" }
+
+[deps.gecode_gist]
+recipe       = "recipes/gecode.sh"
+gist         = true             # → gecode.sh 1
+source_of    = "gecode"         # shares gecode's exact source + commit; never pinned independently
+uses         = ["qt"]           # needs the :qt container (linux) / native Qt (osx, win64)
+artifact_dir = "gecode_gist"
+platforms    = ["linux", "osx", "win64"]   # NOT arm64 / musl / wasm
+# On linux, build in the Qt-enabled image instead of the default :cpp image.
+# On osx/win64 (native runners) the workflow installs Qt via install-qt-action.
+[deps.gecode_gist.container_override]
+linux = "ghcr.io/minizinc/docker-build-environment:qt"   # TODO: pin @sha256:...
+
+[deps.chuffed]
+recipe       = "recipes/chuffed.sh"
+ref          = "develop"        # TODO: revert to a stable tag/branch after Chuffed 0.14.0
+commit       = "b2595dd9f6b3bf0f58262fe1cca7bf19c1327fe4"
+repo         = "https://github.com/Chuffed/chuffed"
+source       = "git"
+artifact_dir = "chuffed"
+platforms    = ["linux", "linux-arm64", "musl", "musl-arm64", "osx", "win64", "wasm"]
+track        = { kind = "branch-head", repo = "https://github.com/Chuffed/chuffed", branch = "develop" }

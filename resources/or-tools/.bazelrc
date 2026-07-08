@@ -1,0 +1,13 @@
+# Prefer static C++ linking where possible.
+build --dynamic_mode=off
+
+# Enable automatic platform-specific config sections (build:windows, build:linux, build:macos).
+common --enable_platform_specific_config
+
+# Build optimized binaries by default.
+build -c opt
+
+# Use C++20 across platforms.
+build:windows --cxxopt=/std:c++20
+build:linux --cxxopt=-std=c++20
+build:macos --cxxopt=-std=c++20

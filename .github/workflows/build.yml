@@ -1,0 +1,159 @@
+name: build-deps
+
+# Reusable core: expand the (dependency x platform) matrix from the manifest and,
+# for each cell, build it and (when publish=true) upload it as an asset on the
+# per-dependency GitHub Release `<dep>-<version>`. A cell whose asset already
+# exists is skipped — so bumping one dependency only builds that dependency, and
+# the release history IS the reproducible artifact store (no separate registry).
+#
+# The job runs on the *host* runner; container platforms execute their recipe via
+# `docker run` (so JS actions like checkout never run inside the — possibly musl —
+# build image). Native platforms (osx/win64) run the recipe directly.
+
+on:
+  workflow_call:
+    inputs:
+      changed_ref:
+        description: "Only build deps changed vs this git ref (empty = all)."
+        type: string
+        default: ""
+      changed_deps:
+        description: "Space-separated dep names to restrict the matrix to."
+        type: string
+        default: ""
+      publish:
+        description: "Upload built assets to the per-dep GitHub Release."
+        type: boolean
+        default: false
+  workflow_dispatch:
+    inputs:
+      changed_deps:
+        description: "Space-separated dep names to build (empty = all)."
+        type: string
+        default: ""
+      publish:
+        description: "Upload built assets to the per-dep GitHub Release."
+        type: boolean
+        default: false
+
+permissions:
+  contents: write        # create releases / upload assets in this repo
+
+jobs:
+  matrix:
+    runs-on: ubuntu-24.04
+    outputs:
+      include: ${{ steps.gen.outputs.include }}
+      empty: ${{ steps.gen.outputs.empty }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # --changed needs history to diff against changed_ref
+      - id: gen
+        shell: bash
+        run: |
+          args=()
+          if [ -n "${{ inputs.changed_ref }}" ]; then
+            args+=(--changed "${{ inputs.changed_ref }}")
+          fi
+          for d in ${{ inputs.changed_deps }}; do
+            args+=(--changed-dep "$d")
+          done
+          include=$(python3 scripts/manifest.py matrix "${args[@]}")
+          echo "include=$include" >> "$GITHUB_OUTPUT"
+          if [ "$include" = "[]" ]; then
+            echo "empty=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "empty=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "$include" | python3 -m json.tool
+
+  build:
+    needs: matrix
+    if: needs.matrix.outputs.empty == 'false'
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.matrix.outputs.include) }}
+    runs-on: ${{ matrix.runner }}
+    name: ${{ matrix.label }}
+    concurrency:
+      group: build-${{ matrix.dep }}-${{ matrix.platform }}
+      cancel-in-progress: false
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Skip if the asset is already published
+        id: existing
+        if: inputs.publish
+        shell: bash
+        run: |
+          names=$(gh release view "${{ matrix.release_tag }}" --repo "${{ github.repository }}" \
+                    --json assets --jq '.assets[].name' 2>/dev/null || true)
+          if echo "$names" | grep -qx "${{ matrix.asset_name }}"; then
+            echo "hit=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::${{ matrix.asset_name }} already published"
+          else
+            echo "hit=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Decode recipe environment
+        if: steps.existing.outputs.hit != 'true'
+        shell: bash
+        run: echo "${{ matrix.env_b64 }}" | base64 -d > cell.env
+
+      - name: Restore Bazel disk cache
+        if: steps.existing.outputs.hit != 'true' && matrix.cache_kind == 'bazel'
+        uses: actions/cache@v4
+        with:
+          path: .bazel-disk
+          key: bazel-${{ matrix.platform }}-${{ matrix.dep }}
+          restore-keys: bazel-${{ matrix.platform }}-
+
+      - name: Install Qt (native gist runners)
+        if: steps.existing.outputs.hit != 'true' && matrix.needs_qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: "5.15.2"
+
+      - name: Build
+        if: steps.existing.outputs.hit != 'true'
+        shell: bash
+        run: |
+          set -eux
+          if [ -n "${{ matrix.container }}" ]; then
+            docker run --rm \
+              -v "$PWD:/work" -w /work \
+              --env-file cell.env -e CI_PROJECT_DIR=/work \
+              "${{ matrix.container }}" \
+              bash "${{ matrix.recipe }}" ${{ matrix.gist }}
+          else
+            # Native runner (osx/win64): export the recipe env safely (values may
+            # contain spaces) without executing anything.
+            while IFS='=' read -r k v; do
+              [ -n "$k" ] && export "$k=$v"
+            done < cell.env
+            export CI_PROJECT_DIR="$PWD"
+            bash "${{ matrix.recipe }}" ${{ matrix.gist }}
+          fi
+
+      - name: Package
+        if: steps.existing.outputs.hit != 'true'
+        shell: bash
+        run: tar -czf "${{ matrix.asset_name }}" -C vendor "${{ matrix.artifact_dir }}"
+
+      - name: Publish asset
+        if: inputs.publish && steps.existing.outputs.hit != 'true'
+        shell: bash
+        run: |
+          set -eux
+          # Create the per-dep release if missing (concurrent triples race -> || true).
+          gh release create "${{ matrix.release_tag }}" \
+            --repo "${{ github.repository }}" \
+            --title "${{ matrix.release_tag }}" \
+            --notes "Reproducible build of ${{ matrix.dep }} (${{ matrix.release_tag }})." \
+            || true
+          gh release upload "${{ matrix.release_tag }}" "${{ matrix.asset_name }}" \
+            --repo "${{ github.repository }}" --clobber
