@@ -171,7 +171,7 @@ jobs:
           gh release create "${{ matrix.release_tag }}" \
             --repo "${{ github.repository }}" \
             --title "${{ matrix.release_tag }}" \
-            --notes "Reproducible build of ${{ matrix.dep }} (${{ matrix.release_tag }})." \
+            --notes "Build of ${{ matrix.dep }} (${{ matrix.release_tag }})." \
             || true
           gh release upload "${{ matrix.release_tag }}" "${{ matrix.asset_name }}" \
             --repo "${{ github.repository }}" --clobber

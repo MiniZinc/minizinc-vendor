@@ -20,3 +20,4 @@ dependencies.lock.json
 # Python
 __pycache__/
 *.pyc
+/.win64-env.sh

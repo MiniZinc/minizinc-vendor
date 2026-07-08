@@ -13,6 +13,26 @@ set -x
 : "${COINBREW_COMMIT:?COINBREW_COMMIT must be set}"
 : "${CI_PROJECT_DIR:?CI_PROJECT_DIR must be set}"
 
+# --- Windows: run under MSYS2 -----------------------------------------------
+# coinbrew's autotools build needs a full Unix environment (make + autoconf +
+# automake). COIN-OR's supported Windows environment is MSYS2, not git-bash
+# (which ships none of these, causing the maintainer-mode regeneration loop).
+# Install the tools into the runner's MSYS2 and re-exec this recipe under it:
+#   MSYS2_PATH_TYPE=inherit   -> keep the Windows PATH (MSVC `cl` from msvc-dev-cmd)
+#   MSYS2_ENV_CONV_EXCL='*'   -> don't mangle Windows-path env vars (INCLUDE/LIB)
+if [[ "$MZNARCH" == "win64" && -z "${IN_MSYS2:-}" ]]; then
+	/c/msys64/usr/bin/pacman -Sy --noconfirm --needed --disable-download-timeout \
+		make autoconf automake libtool m4 perl patch pkgconf diffutils
+	# Crossing from git-bash's runtime to MSYS2's does not carry env vars, so dump
+	# and re-source them on the MSYS2 side (minus PATH, which MSYS2_PATH_TYPE
+	# provides). This also carries INCLUDE/LIB/CFLAGS across for the MSVC build.
+	export -p | grep -v ' PATH=' > .win64-env.sh
+	export IN_MSYS2=1
+	export MSYS2_PATH_TYPE=inherit
+	export MSYS2_ENV_CONV_EXCL='*'
+	exec /c/msys64/usr/bin/bash -c '. ./.win64-env.sh; export IN_MSYS2=1; exec bash "$1"' _ "$0"
+fi
+
 # Fetch the pinned coinbrew script (reproducible; replaces the old master download).
 rm -rf coinbrew-src
 git clone --quiet https://github.com/coin-or/coinbrew coinbrew-src
@@ -41,7 +61,7 @@ elif [[ "$MZNARCH" == "wasm" ]]; then
 	config_opts+=" CXXFLAGS=-std=c++14"
 elif [[ "$MZNARCH" == "win64" ]]; then
 	config_opts+=" --enable-msvc --build=x86_64-w64-mingw32"
-	export CI_PROJECT_DIR=`cygpath ${CI_PROJECT_DIR}`
+	export CI_PROJECT_DIR=$(cygpath "${CI_PROJECT_DIR}")
 else
 	echo "Illegal MZNARCH value"
 	exit 1
