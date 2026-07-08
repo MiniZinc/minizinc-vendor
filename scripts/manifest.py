@@ -60,11 +60,12 @@ def load() -> dict:
 
 
 def resolve_dep(m: dict, name: str) -> dict:
-    """Return a dep entry with `source_of` inheritance applied (gecode_gist)."""
+    """Return a dep entry with `source_of` inheritance applied (gecode_gist shares
+    gecode's version/commit)."""
     d = dict(m["deps"][name])
     if "source_of" in d:
         parent = m["deps"][d["source_of"]]
-        for k in ("repo", "source", "version", "commit", "ref"):
+        for k in ("version", "commit"):
             if k in parent and k not in d:
                 d[k] = parent[k]
     return d
@@ -73,14 +74,6 @@ def resolve_dep(m: dict, name: str) -> dict:
 def dep_version_label(d: dict) -> str:
     """The immutable identity of a dep build: its tag, or its commit."""
     return d["version"] if "version" in d else d["commit"]
-
-
-def cell_container(m: dict, d: dict, platform: str) -> str:
-    """Container image for a build cell ("" => native runner)."""
-    override = d.get("container_override", {}).get(platform)
-    if override is not None:
-        return override
-    return m["platforms"][platform].get("container") or ""
 
 
 def release_tag(name: str, d: dict) -> str:
@@ -104,7 +97,7 @@ def cell_setup(m: dict, platform: str, qt_in_container: bool) -> str:
 def build_cell(m: dict, name: str, platform: str) -> dict:
     d = resolve_dep(m, name)
     plat = m["platforms"][platform]
-    container = cell_container(m, d, platform)
+    container = plat.get("container") or ""
     uses = d.get("uses", [])
     qt = "qt" in uses
     qt_in_container = qt and container != ""
@@ -295,7 +288,6 @@ def main() -> int:
                 "identity": dep_version_label(d),
                 "version": d.get("version"),
                 "commit": d.get("commit"),
-                "ref": d.get("ref"),
                 "release_tag": release_tag(name, d),
                 "assets": {p: asset_name(m, name, d, p) for p in d["platforms"]},
             }

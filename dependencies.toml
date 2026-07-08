@@ -86,9 +86,8 @@ triple    = "wasm32-emscripten"
 # coinbrew has no recent release (last tag v2.0 is from 2022 and lacks Windows
 # fixes), so we pin a `master` commit and let the bot track the branch head —
 # matching the old CI, which used master.
-repo   = "https://github.com/coin-or/coinbrew"
 commit = "50539b4ea785cb2088366dc7f26930ec5c5b4546"
-track  = { kind = "branch-head", branch = "master" }
+track  = { kind = "branch-head", repo = "https://github.com/coin-or/coinbrew", branch = "master" }
 
 [toolchain.bazel]
 version = "8.6.0"
@@ -133,8 +132,6 @@ track   = { kind = "manual" }
 [deps.cbc]
 recipe       = "recipes/cbc.sh"
 version      = "2.10.13"
-repo         = "https://github.com/coin-or/Cbc"
-source       = "coinbrew"               # fetched via coinbrew, not a plain git clone
 uses         = ["coinbrew"]
 artifact_dir = "cbc"
 platforms    = ["linux", "linux-arm64", "musl", "musl-arm64", "osx", "win64", "wasm"]
@@ -150,8 +147,6 @@ CXXFLAGS = "-MD -O2"
 [deps.highs]
 recipe       = "recipes/highs.sh"
 version      = "v1.15.1"
-repo         = "https://github.com/ERGO-Code/HiGHS"
-source       = "git"
 artifact_dir = "highs"
 platforms    = ["linux", "linux-arm64", "musl", "musl-arm64", "osx", "win64", "wasm"]
 track        = { kind = "git-tags", repo = "https://github.com/ERGO-Code/HiGHS", pattern = 'v(\d+\.\d+\.\d+)' }
@@ -159,22 +154,17 @@ track        = { kind = "git-tags", repo = "https://github.com/ERGO-Code/HiGHS",
 [deps.or-tools]
 recipe       = "recipes/or-tools.sh"
 version      = "v9.15"
-repo         = "https://github.com/google/or-tools"
-source       = "git"
 uses         = ["bazel", "bazelisk", "rules_pkg"]
-overlay      = "resources/or-tools"
+overlay      = "resources/or-tools"     # rebuilt in pr-validate if these files change
 artifact_dir = "or-tools"
 platforms    = ["linux", "linux-arm64", "musl", "musl-arm64", "osx", "win64"]   # no wasm
 track        = { kind = "git-tags", repo = "https://github.com/google/or-tools", pattern = 'v(\d+\.\d+)' }
 
 [deps.gecode]
 recipe       = "recipes/gecode.sh"
-# Branch-tracked (was a git submodule on release/6.3.0). `commit` is the reproducible
-# pin used to build; `ref` tells the bot which moving branch to diff against.
-ref          = "release/6.3.0"
+# Branch-tracked (was a git submodule). `commit` is the reproducible pin used to
+# build; the bot bumps it to the head of `track.branch`.
 commit       = "eebbc1bfaef1decd3ab6a3c583c7b55f5fe29600"
-repo         = "https://github.com/Gecode/gecode"
-source       = "git"
 artifact_dir = "gecode"
 platforms    = ["linux", "linux-arm64", "musl", "musl-arm64", "osx", "win64", "wasm"]
 track        = { kind = "branch-head", repo = "https://github.com/Gecode/gecode", branch = "release/6.3.0" }
@@ -182,8 +172,8 @@ track        = { kind = "branch-head", repo = "https://github.com/Gecode/gecode"
 [deps.gecode_gist]
 recipe       = "recipes/gecode.sh"
 gist         = true             # → gecode.sh 1
-source_of    = "gecode"         # shares gecode's exact source + commit; never pinned independently
-uses         = ["qt"]           # needs the :qt container (linux) / native Qt (osx, win64)
+source_of    = "gecode"         # shares gecode's commit; never pinned independently
+uses         = ["qt"]           # Qt: aqtinstall (linux container) / install-qt-action (osx, win64)
 artifact_dir = "gecode_gist"
 platforms    = ["linux", "osx", "win64"]   # NOT arm64 / musl / wasm
 # Qt is installed on the fly: via aqtinstall inside the linux container, and via
@@ -191,10 +181,8 @@ platforms    = ["linux", "osx", "win64"]   # NOT arm64 / musl / wasm
 
 [deps.chuffed]
 recipe       = "recipes/chuffed.sh"
-ref          = "develop"        # TODO: revert to a stable tag/branch after Chuffed 0.14.0
+# TODO: track a stable branch/tag after Chuffed 0.14.0 (currently develop).
 commit       = "b2595dd9f6b3bf0f58262fe1cca7bf19c1327fe4"
-repo         = "https://github.com/Chuffed/chuffed"
-source       = "git"
 artifact_dir = "chuffed"
 platforms    = ["linux", "linux-arm64", "musl", "musl-arm64", "osx", "win64", "wasm"]
 track        = { kind = "branch-head", repo = "https://github.com/Chuffed/chuffed", branch = "develop" }
