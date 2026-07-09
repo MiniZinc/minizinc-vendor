@@ -22,24 +22,17 @@ set -x
 #   MSYS2_ENV_CONV_EXCL='*'   -> don't mangle Windows-path env vars (INCLUDE/LIB)
 if [[ "$MZNARCH" == "win64" && -z "${IN_MSYS2:-}" ]]; then
 	/c/msys64/usr/bin/pacman -Sy --noconfirm --needed --disable-download-timeout \
-		make autoconf automake libtool m4 perl patch pkgconf diffutils
-	# Crossing from git-bash's runtime to MSYS2's does not carry env vars, so dump
-	# and re-source them on the MSYS2 side (minus PATH, which MSYS2_PATH_TYPE
-	# provides). This also carries INCLUDE/LIB/CFLAGS across for the MSVC build.
+		make autoconf automake libtool m4 perl patch pkgconf diffutils \
+		git curl wget tar
+	# Crossing runtimes drops the shell environment: git-bash's exported vars are
+	# not visible to a *different* MSYS2. Dump the full env (incl. PATH and the MSVC
+	# INCLUDE/LIB) and re-source it inside MSYS2. The final exec MUST use the
+	# explicit MSYS2 bash — a bare `bash` resolves back to git-bash via the Windows
+	# PATH and loses the env again. MSYS2_ENV_CONV_EXCL keeps Windows-path vars
+	# (INCLUDE/LIB) intact when the build spawns cl.
 	env_abs="$(cygpath -u "$(cygpath -w "$PWD")")/.win64-env.sh"
-	export -p | grep -v ' PATH=' > "$env_abs"
-	export IN_MSYS2=1
-	export MSYS2_PATH_TYPE=inherit
-	export MSYS2_ENV_CONV_EXCL='*'
-	exec /c/msys64/usr/bin/bash -c '
-		echo "=== msys2 diag: cwd=$(pwd)"
-		ls -la "$2" || echo "DIAG: env file missing"
-		echo "DIAG: before source DEP_VERSION=[${DEP_VERSION:-}]"
-		. "$2" && echo "DIAG: sourced ok" || echo "DIAG: source rc=$?"
-		echo "DIAG: after source DEP_VERSION=[${DEP_VERSION:-}]"
-		export IN_MSYS2=1
-		exec bash "$1"
-	' _ "$0" "$env_abs"
+	export -p > "$env_abs"
+	exec /c/msys64/usr/bin/bash -c '. "$1"; export IN_MSYS2=1 MSYS2_ENV_CONV_EXCL="*"; exec /c/msys64/usr/bin/bash "$2"' _ "$env_abs" "$0"
 fi
 
 # Fetch the pinned coinbrew script (reproducible; replaces the old master download).
@@ -71,6 +64,25 @@ elif [[ "$MZNARCH" == "wasm" ]]; then
 elif [[ "$MZNARCH" == "win64" ]]; then
 	config_opts+=" --enable-msvc --build=x86_64-w64-mingw32"
 	export CI_PROJECT_DIR=$(cygpath "${CI_PROJECT_DIR}")
+
+	# autotools maintainer-mode keeps re-running on every build (fresh-clone
+	# mtimes), and regenerating swaps COIN's working libtool for msys2's, which
+	# mis-combines MSVC convenience libraries (LNK4014 -> unresolved Cgl symbols).
+	# We can't reliably stop the tools from running, so make them HARMLESS: shadow
+	# them with stubs that only `touch` their output (satisfying make and breaking
+	# the regen loop) instead of regenerating — COIN's shipped libtool is kept.
+	fakebin="${CI_PROJECT_DIR}/.fake-autotools"
+	rm -rf "$fakebin"; mkdir -p "$fakebin"
+	printf '#!/bin/sh\ntouch configure\n'  > "$fakebin/autoconf"
+	printf '#!/bin/sh\ntouch aclocal.m4\n' > "$fakebin/aclocal"
+	printf '#!/bin/sh\ntouch config.h.in 2>/dev/null; for f in *.h.in; do touch "$f" 2>/dev/null; done; :\n' > "$fakebin/autoheader"
+	printf '#!/bin/sh\nfor a in "$@"; do case "$a" in -*) : ;; *) touch "$a.in" 2>/dev/null || : ;; esac; done; :\n' > "$fakebin/automake"
+	printf '#!/bin/sh\n:\n'                > "$fakebin/autom4te"
+	chmod +x "$fakebin"/*
+	cp "$fakebin/aclocal"  "$fakebin/aclocal-1.9"
+	cp "$fakebin/automake" "$fakebin/automake-1.9"
+	for t in autoreconf autoupdate libtoolize; do cp "$fakebin/autom4te" "$fakebin/$t"; done
+	export PATH="$fakebin:$PATH"
 else
 	echo "Illegal MZNARCH value"
 	exit 1
@@ -85,6 +97,8 @@ if [[ "$MZNARCH" == "osx" ]]; then
 	COINBREW_BASH="$(brew --prefix)/bin/bash"
 fi
 
-# Fetch and build CBC
+# Fetch CBC and all its COIN-OR dependencies.
 "$COINBREW_BASH" ./coinbrew --no-prompt fetch --no-third-party Cbc@${DEP_VERSION}
+
+# Build CBC.
 "$COINBREW_BASH" ./coinbrew --no-prompt build Cbc ${config_opts}
