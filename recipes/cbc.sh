@@ -26,11 +26,20 @@ if [[ "$MZNARCH" == "win64" && -z "${IN_MSYS2:-}" ]]; then
 	# Crossing from git-bash's runtime to MSYS2's does not carry env vars, so dump
 	# and re-source them on the MSYS2 side (minus PATH, which MSYS2_PATH_TYPE
 	# provides). This also carries INCLUDE/LIB/CFLAGS across for the MSVC build.
-	export -p | grep -v ' PATH=' > .win64-env.sh
+	env_abs="$(cygpath -u "$(cygpath -w "$PWD")")/.win64-env.sh"
+	export -p | grep -v ' PATH=' > "$env_abs"
 	export IN_MSYS2=1
 	export MSYS2_PATH_TYPE=inherit
 	export MSYS2_ENV_CONV_EXCL='*'
-	exec /c/msys64/usr/bin/bash -c '. ./.win64-env.sh; export IN_MSYS2=1; exec bash "$1"' _ "$0"
+	exec /c/msys64/usr/bin/bash -c '
+		echo "=== msys2 diag: cwd=$(pwd)"
+		ls -la "$2" || echo "DIAG: env file missing"
+		echo "DIAG: before source DEP_VERSION=[${DEP_VERSION:-}]"
+		. "$2" && echo "DIAG: sourced ok" || echo "DIAG: source rc=$?"
+		echo "DIAG: after source DEP_VERSION=[${DEP_VERSION:-}]"
+		export IN_MSYS2=1
+		exec bash "$1"
+	' _ "$0" "$env_abs"
 fi
 
 # Fetch the pinned coinbrew script (reproducible; replaces the old master download).
