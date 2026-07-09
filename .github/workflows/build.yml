@@ -59,6 +59,9 @@ jobs:
           fetch-depth: 0 # --changed needs history to diff against changed_ref
       - id: gen
         shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
           args=()
           if [ -n "${{ inputs.changed_ref }}" ]; then
@@ -68,6 +71,11 @@ jobs:
             args+=(--changed-dep "$d")
           done
           include=$(python3 scripts/manifest.py matrix "${args[@]}")
+          # When publishing (and not forcing), drop cells whose asset already
+          # exists so we only spawn jobs that still need to run.
+          if [ "${{ inputs.publish }}" = "true" ] && [ "${{ inputs.force }}" != "true" ]; then
+            include=$(printf '%s' "$include" | python3 scripts/prune_built.py)
+          fi
           echo "include=$include" >> "$GITHUB_OUTPUT"
           if [ "$include" = "[]" ]; then
             echo "empty=true" >> "$GITHUB_OUTPUT"
@@ -93,29 +101,14 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Skip if the asset is already published
-        id: existing
-        if: ${{ inputs.publish && !inputs.force }}
-        shell: bash
-        run: |
-          names=$(gh release view "${{ matrix.release_tag }}" --repo "${{ github.repository }}" \
-                    --json assets --jq '.assets[].name' 2>/dev/null || true)
-          if echo "$names" | grep -qx "${{ matrix.asset_name }}"; then
-            echo "hit=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::${{ matrix.asset_name }} already published"
-          else
-            echo "hit=false" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Decode recipe environment & setup
-        if: steps.existing.outputs.hit != 'true'
         shell: bash
         run: |
           echo "${{ matrix.env_b64 }}" | base64 -d > cell.env
           echo "${{ matrix.setup_b64 }}" | base64 -d > cell-setup.sh
 
       - name: Restore Bazel disk cache
-        if: steps.existing.outputs.hit != 'true' && matrix.cache_kind == 'bazel'
+        if: matrix.cache_kind == 'bazel'
         uses: actions/cache@v4
         with:
           path: .bazel-disk
@@ -123,17 +116,16 @@ jobs:
           restore-keys: bazel-${{ matrix.platform }}-
 
       - name: Install Qt (native gist runners)
-        if: steps.existing.outputs.hit != 'true' && matrix.needs_qt
+        if: matrix.needs_qt
         uses: jurplel/install-qt-action@v4
         with:
           version: ${{ matrix.qt_version }}
 
       - name: Set up MSVC (win64)
-        if: steps.existing.outputs.hit != 'true' && matrix.platform == 'win64'
+        if: matrix.platform == 'win64'
         uses: ilammy/msvc-dev-cmd@v1
 
       - name: Build
-        if: steps.existing.outputs.hit != 'true'
         shell: bash
         run: |
           set -eux
@@ -158,12 +150,11 @@ jobs:
           fi
 
       - name: Package
-        if: steps.existing.outputs.hit != 'true'
         shell: bash
         run: tar -czf "${{ matrix.asset_name }}" -C vendor "${{ matrix.artifact_dir }}"
 
       - name: Publish asset
-        if: inputs.publish && steps.existing.outputs.hit != 'true'
+        if: inputs.publish
         shell: bash
         run: |
           set -eux
