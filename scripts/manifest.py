@@ -38,8 +38,10 @@ ASSET_EXT = "tar.gz"
 # manylinux_2_28 is glibc 2.28, which the official Qt 6 Linux binaries require.
 QT_CONTAINER_SETUP = """\
 dnf -y install libxcb-devel libxkbcommon-devel mesa-libGL-devel fontconfig-devel freetype-devel libX11-devel 2>/dev/null || true
-python3 -m pip install --quiet aqtinstall
-python3 -m aqt install-qt linux desktop {ver} linux_gcc_64 --outputdir /opt/qt
+# The system python3 (AlmaLinux 8 => 3.6) is too old for aqtinstall; use a bundled manylinux python.
+PY=$(ls -d /opt/python/cp311-cp311/bin/python /opt/python/cp312-cp312/bin/python 2>/dev/null | head -1)
+"$PY" -m pip install --quiet aqtinstall
+"$PY" -m aqt install-qt linux desktop {ver} gcc_64 --outputdir /opt/qt
 export PATH="/opt/qt/{ver}/gcc_64/bin:$PATH"
 export CMAKE_PREFIX_PATH="/opt/qt/{ver}/gcc_64:${{CMAKE_PREFIX_PATH:-}}\""""
 
