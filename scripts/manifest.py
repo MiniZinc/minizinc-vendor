@@ -145,7 +145,7 @@ def env_kv(m: dict, name: str, platform: str) -> list[str]:
 
     put("MZNARCH", plat["mznarch"])
     if platform != "wasm":
-        put("CMAKEARCH", "Ninja")
+        put("CMAKEARCH", plat.get("cmake_generator", "Ninja"))
     if "version" in d:
         put("DEP_VERSION", d["version"])
     if "commit" in d:

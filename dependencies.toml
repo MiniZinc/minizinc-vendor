@@ -37,6 +37,7 @@ container = "quay.io/pypa/manylinux_2_28_x86_64"                 # TODO: pin @sh
 mznarch   = "linux"
 triple    = "x86_64-linux-gnu"
 setup     = "dnf -y install zlib-devel patch which file 2>/dev/null || true"
+cmake_generator = "Unix Makefiles"   # manylinux has make + gcc but not ninja
 
 [platforms.linux-arm64]
 runner    = "ubuntu-24.04-arm"
@@ -44,6 +45,7 @@ container = "quay.io/pypa/manylinux_2_28_aarch64"                # TODO: pin @sh
 mznarch   = "linux-arm64"
 triple    = "aarch64-linux-gnu"
 setup     = "dnf -y install zlib-devel patch which file 2>/dev/null || true"
+cmake_generator = "Unix Makefiles"   # manylinux has make + gcc but not ninja
 
 [platforms.musl]
 runner    = "ubuntu-24.04"
