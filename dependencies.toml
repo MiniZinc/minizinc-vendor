@@ -129,20 +129,24 @@ track   = { kind = "manual" }
 # arm64/musl/wasm; or-tools: no wasm).
 # -----------------------------------------------------------------------------
 
-[deps.cbc]
-recipe       = "recipes/cbc.sh"
-version      = "2.10.13"
-uses         = ["coinbrew"]
-artifact_dir = "cbc"
-platforms    = ["linux", "linux-arm64", "musl", "musl-arm64", "osx", "win64", "wasm"]
-track        = { kind = "git-tags", repo = "https://github.com/coin-or/Cbc", pattern = 'releases/(\d+\.\d+\.\d+)' }
-# CBC uses coinbrew (not CMake), so arch/MSVC flags go through CFLAGS/CXXFLAGS.
-[deps.cbc.env.osx]
-CFLAGS   = "-arch arm64"
-CXXFLAGS = "-arch arm64"
-[deps.cbc.env.win64]
-CFLAGS   = "-MD -O2"
-CXXFLAGS = "-MD -O2"
+# CBC is DEACTIVATED for now: coinbrew's build hits a libtool 2.5.4 bug combining
+# multi-object convenience libraries under MSVC on the hosted windows runner (see the
+# plan). `recipes/cbc.sh` and `[toolchain.coinbrew]` are kept so it can be reactivated
+# once win64 is fixed (self-hosted / pinned-image runner) — just restore this block:
+#
+# [deps.cbc]
+# recipe       = "recipes/cbc.sh"
+# version      = "2.10.13"
+# uses         = ["coinbrew"]
+# artifact_dir = "cbc"
+# platforms    = ["linux", "linux-arm64", "musl", "musl-arm64", "osx", "win64", "wasm"]
+# track        = { kind = "git-tags", repo = "https://github.com/coin-or/Cbc", pattern = 'releases/(\d+\.\d+\.\d+)' }
+# [deps.cbc.env.osx]
+# CFLAGS   = "-arch arm64"
+# CXXFLAGS = "-arch arm64"
+# [deps.cbc.env.win64]
+# CFLAGS   = "-MD -O2"
+# CXXFLAGS = "-MD -O2"
 
 [deps.highs]
 recipe       = "recipes/highs.sh"
