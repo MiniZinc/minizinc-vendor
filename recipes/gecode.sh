@@ -3,21 +3,22 @@
 # Usage: gecode.sh {build_with_gist:0/1}
 #
 # Inputs (environment):
-#   DEP_COMMIT     Gecode commit to build (was a git submodule gitlink)
+#   DEP_VERSION    Gecode release to build, bare number (e.g. "6.4.0"); the
+#                  upstream tag is `release-$DEP_VERSION`
 #   MZNARCH        platform selector
 #   CMAKEARCH      CMake generator (e.g. "Ninja") — unused on wasm
 #   CI_PROJECT_DIR build root
 set -e
 set -x
 
-: "${DEP_COMMIT:?DEP_COMMIT must be set}"
+: "${DEP_VERSION:?DEP_VERSION must be set}"
 : "${CI_PROJECT_DIR:?CI_PROJECT_DIR must be set}"
 
 # Fetch the pinned Gecode source (replaces the old submodule checkout).
 if [ ! -d "$CI_PROJECT_DIR/gecode/.git" ]; then
 	git clone --quiet https://github.com/Gecode/gecode "$CI_PROJECT_DIR/gecode"
 fi
-git -C "$CI_PROJECT_DIR/gecode" checkout --quiet "$DEP_COMMIT"
+git -C "$CI_PROJECT_DIR/gecode" checkout --quiet "release-$DEP_VERSION"
 
 DIR="gecode"
 ARCH="arm64"

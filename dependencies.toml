@@ -168,12 +168,13 @@ track        = { kind = "git-tags", repo = "https://github.com/google/or-tools",
 
 [deps.gecode]
 recipe       = "recipes/gecode.sh"
-# Branch-tracked (was a git submodule). `commit` is the reproducible pin used to
-# build; the bot bumps it to the head of `track.branch`.
-commit       = "eebbc1bfaef1decd3ab6a3c583c7b55f5fe29600"
+# Release-tagged. `version` is the bare number; the recipe checks out the upstream
+# tag `release-$DEP_VERSION` (the tracked pattern captures the same bare number, so
+# the update bot compares like for like).
+version      = "6.4.0"
 artifact_dir = "gecode"
 platforms    = ["linux", "linux-arm64", "musl", "musl-arm64", "osx", "win64", "wasm"]
-track        = { kind = "branch-head", repo = "https://github.com/Gecode/gecode", branch = "release/6.3.0" }
+track        = { kind = "git-tags", repo = "https://github.com/Gecode/gecode", pattern = 'release-(\d+\.\d+\.\d+)' }
 
 [deps.gecode_gist]
 recipe       = "recipes/gecode.sh"
@@ -187,8 +188,7 @@ platforms    = ["linux", "osx", "win64"]   # NOT arm64 / musl / wasm
 
 [deps.chuffed]
 recipe       = "recipes/chuffed.sh"
-# TODO: track a stable branch/tag after Chuffed 0.14.0 (currently develop).
-commit       = "b2595dd9f6b3bf0f58262fe1cca7bf19c1327fe4"
+version      = "0.14.0"
 artifact_dir = "chuffed"
 platforms    = ["linux", "linux-arm64", "musl", "musl-arm64", "osx", "win64", "wasm"]
-track        = { kind = "branch-head", repo = "https://github.com/Chuffed/chuffed", branch = "develop" }
+track        = { kind = "git-tags", repo = "https://github.com/Chuffed/chuffed", pattern = '^(\d+\.\d+\.\d+)$' }
