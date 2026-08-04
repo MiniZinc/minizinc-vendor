@@ -62,7 +62,7 @@ triple    = "aarch64-linux-musl"
 setup     = "apk add --no-cache bash build-base cmake ninja git curl autoconf automake libtool pkgconf zlib-dev linux-headers"
 
 [platforms.osx]
-runner    = "macos-14"          # arm64 host; arm64-only builds (Intel Macs unsupported)
+runner    = "macos-26"          # arm64 host; arm64-only builds (Intel Macs unsupported)
 container = ""                  # native (no container)
 mznarch   = "osx"
 triple    = "aarch64-apple-darwin"
