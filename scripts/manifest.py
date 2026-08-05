@@ -41,9 +41,14 @@ dnf -y install libxcb-devel libxkbcommon-devel mesa-libGL-devel fontconfig-devel
 # The system python3 (AlmaLinux 8 => 3.6) is too old for aqtinstall; use a bundled manylinux python.
 PY=$(ls -d /opt/python/cp311-cp311/bin/python /opt/python/cp312-cp312/bin/python 2>/dev/null | head -1)
 "$PY" -m pip install --quiet aqtinstall
-"$PY" -m aqt install-qt linux desktop {ver} gcc_64 --outputdir /opt/qt
-export PATH="/opt/qt/{ver}/gcc_64/bin:$PATH"
-export CMAKE_PREFIX_PATH="/opt/qt/{ver}/gcc_64:${{CMAKE_PREFIX_PATH:-}}\""""
+# Qt renamed the Linux desktop arch (6.5 = gcc_64, 6.9+ = linux_gcc_64), so resolve it
+# instead of hardcoding, and take the install dir aqt actually created.
+QT_ARCH=$("$PY" -m aqt list-qt linux desktop --arch {ver} | tr ' ' '\\n' | grep -E '^(linux_)?gcc_64$' | head -1)
+"$PY" -m aqt install-qt linux desktop {ver} "$QT_ARCH" --outputdir /opt/qt
+QT_DIR=$(ls -d /opt/qt/{ver}/*/ | head -1)
+QT_DIR=${{QT_DIR%/}}
+export PATH="$QT_DIR/bin:$PATH"
+export CMAKE_PREFIX_PATH="$QT_DIR:${{CMAKE_PREFIX_PATH:-}}\""""
 
 # bazelisk release asset per platform (empty => Alpine/musl uses `apk add bazel8`).
 BAZELISK_ASSET = {

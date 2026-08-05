@@ -62,7 +62,11 @@ triple    = "aarch64-linux-musl"
 setup     = "apk add --no-cache bash build-base cmake ninja git curl autoconf automake libtool pkgconf zlib-dev linux-headers"
 
 [platforms.osx]
-runner    = "macos-26"          # arm64 host; arm64-only builds (Intel Macs unsupported)
+# arm64 host; arm64-only builds (Intel Macs unsupported).
+# macos-26 (AppleClang 21), not macos-14 (AppleClang 15): clang 15 wrongly rejects Gecode
+# 6.4's Pack::calc_dff_lower_bound, where the template parameter `l` shadows Pack's data
+# member `l` in a static member function. Verified accepted by clang 21.
+runner    = "macos-26"
 container = ""                  # native (no container)
 mznarch   = "osx"
 triple    = "aarch64-apple-darwin"
@@ -119,10 +123,18 @@ version = "3.5.1"
 track   = { kind = "manual" }
 
 [toolchain.qt]
-# Qt for gecode_gist. Downloaded on the fly via aqtinstall (in-container on linux;
-# via install-qt-action on the native osx/win64 runners). Keep aligned with the
-# MiniZincIDE's Qt. Qt 6's macOS build is universal (incl. arm64).
-version = "6.5.3"
+# Qt for gecode_gist, one version across linux/osx/win64. Downloaded on the fly via
+# aqtinstall (in-container on linux; via install-qt-action on the native osx/win64 runners).
+# The MiniZincIDE bundles gecode_gist, so keep this aligned with the IDE's Qt.
+#
+# The version is squeezed from both sides — check both before bumping:
+#  - FLOOR: >= 6.9.2 (or 6.8.4, which is not open source). Apple removed the AGL framework
+#    in macOS 26, so older Qt fails Gecode's GECODE_GIST_QT_LINKS test on the macos-26
+#    runner with "framework 'AGL' not found" (QTBUG-137687).
+#  - CEILING: Qt's Linux binaries must run on manylinux_2_28 (glibc 2.28). Qt 6.9 is still
+#    "linked against glibc 2.28", but Qt 6.10 requires glibc 2.34+ (built against 2.39) and
+#    would break gecode_gist:linux unless that container's glibc floor is also raised.
+version = "6.9.3"
 track   = { kind = "manual" }
 
 # -----------------------------------------------------------------------------

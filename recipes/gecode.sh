@@ -24,6 +24,7 @@ DIR="gecode"
 ARCH="arm64"
 if [ "${1:-0}" = 1 ]; then
 	ENABLE_GIST=TRUE
+	ENABLE_QT=TRUE
 	if [ ! -x "$(command -v qmake)" ]; then
 		echo "!!!!!!!!!!!!!! CANNOT FIND QMAKE !!!!!!!!!!!!"
 		exit 1
@@ -31,24 +32,32 @@ if [ "${1:-0}" = 1 ]; then
 	DIR="gecode_gist"
 else
 	ENABLE_GIST=FALSE
+	ENABLE_QT=FALSE
 fi
 
 mkdir -p {build,vendor}/$DIR
 cd build/$DIR
 
+# libminizinc links Gecode statically, so build only the static libs. Gecode 6.4
+# renamed these options with a GECODE_ prefix (the unprefixed ones are deprecated
+# and silently ignored, which produced shared-only builds).
 if [[ "$MZNARCH" == "wasm" ]]; then
 	# Gist and CP-Profiler are unavailable under emscripten.
 	emcmake cmake -G"Unix Makefiles" "$CI_PROJECT_DIR/gecode" \
 		-DCMAKE_BUILD_TYPE=MinSizeRel \
 		-DCMAKE_INSTALL_PREFIX="$CI_PROJECT_DIR/vendor/$DIR" \
-		-DENABLE_GIST=FALSE -DENABLE_CPPROFILER=FALSE
+		-DGECODE_BUILD_SHARED=OFF -DGECODE_BUILD_STATIC=ON \
+		-DGECODE_ENABLE_GIST=FALSE -DGECODE_ENABLE_QT=FALSE \
+		-DGECODE_ENABLE_CPPROFILER=FALSE
 	cmake --build . --config MinSizeRel
 	cmake --build . --config MinSizeRel --target install
 else
 	cmake -G"$CMAKEARCH" "$CI_PROJECT_DIR/gecode" \
 		-DCMAKE_BUILD_TYPE=Release \
 		-DCMAKE_INSTALL_PREFIX="$CI_PROJECT_DIR/vendor/$DIR" \
-		-DENABLE_GIST=${ENABLE_GIST} -DENABLE_CPPROFILER=TRUE \
+		-DGECODE_BUILD_SHARED=OFF -DGECODE_BUILD_STATIC=ON \
+		-DGECODE_ENABLE_GIST=${ENABLE_GIST} -DGECODE_ENABLE_QT=${ENABLE_QT} \
+		-DGECODE_ENABLE_CPPROFILER=TRUE \
 		-DCMAKE_OSX_ARCHITECTURES=${ARCH}
 	cmake --build . --config Release
 	cmake --build . --config Release --target install
