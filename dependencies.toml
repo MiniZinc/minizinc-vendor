@@ -181,14 +181,18 @@ platforms    = ["linux", "linux-arm64", "musl", "musl-arm64", "osx", "win64", "w
 track        = { kind = "git-tags", repo = "https://github.com/Chuffed/chuffed", pattern = '^(\d+\.\d+\.\d+)$' }
 
 [deps.openssl]
-# Prebuilt Windows runtime DLLs, checked in under resources/openssl-win64 (there
-# is no suitable upstream redistributable). Published like any other dependency
-# so the MiniZincIDE Windows installer can consume it: the old pipeline injected
-# these during the compose step, which per-dependency releases do not have.
-# The bot cannot auto-bump binary DLLs, so it opens an advisory issue instead.
+# Runtime DLLs for the IDE's Windows installer. Fetched from slproweb.com (the
+# de-facto Windows OpenSSL build) rather than checked in, so ARM64 is covered and
+# the binaries are not carried in git. slproweb keeps only the newest patch per
+# branch, so this version has to be bumped when it 404s.
 recipe       = "recipes/openssl.sh"
-version      = "3.5.1"
-overlay      = "resources/openssl-win64"
+version      = "3.5.7"
 artifact_dir = "openssl"
-platforms    = ["win64"]
+platforms    = ["win64", "win64-arm"]
 track        = { kind = "manual" }
+[deps.openssl.env.win64]
+OPENSSL_MSI    = "Win64OpenSSL_Light-3_5_7.msi"
+OPENSSL_SHA256 = "2faad0a2a644443077b1c03fb36199b48ec0248a8a87f1f29bc9f5be5805dc4f"
+[deps.openssl.env.win64-arm]
+OPENSSL_MSI    = "Win64ARMOpenSSL_Light-3_5_7.msi"
+OPENSSL_SHA256 = "29956e9258fd9b6217a54d6eadf844e39f58ea58e5abee4878d10d3c72e638a9"
