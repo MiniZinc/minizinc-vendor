@@ -1,18 +1,13 @@
 #!/bin/bash
 # Build Chuffed into $CI_PROJECT_DIR/vendor/chuffed.
 #
-# Inputs (environment):
-#   DEP_VERSION    Chuffed release tag to build (e.g. "0.14.0")
-#   MZNARCH        platform selector
-#   CMAKEARCH      CMake generator (e.g. "Ninja") — unused on wasm
-#   CI_PROJECT_DIR build root
+# Env: DEP_VERSION, MZNARCH, CMAKEARCH, CI_PROJECT_DIR
 set -e
 set -x
 
 : "${DEP_VERSION:?DEP_VERSION must be set}"
 : "${CI_PROJECT_DIR:?CI_PROJECT_DIR must be set}"
 
-# Fetch the pinned Chuffed source (replaces the old submodule checkout).
 if [ ! -d "$CI_PROJECT_DIR/chuffed/.git" ]; then
 	git clone --quiet https://github.com/Chuffed/chuffed "$CI_PROJECT_DIR/chuffed"
 fi

@@ -2,19 +2,13 @@
 # Build Gecode into $CI_PROJECT_DIR/vendor/gecode (or vendor/gecode_gist with Gist).
 # Usage: gecode.sh {build_with_gist:0/1}
 #
-# Inputs (environment):
-#   DEP_VERSION    Gecode release to build, bare number (e.g. "6.4.0"); the
-#                  upstream tag is `release-$DEP_VERSION`
-#   MZNARCH        platform selector
-#   CMAKEARCH      CMake generator (e.g. "Ninja") — unused on wasm
-#   CI_PROJECT_DIR build root
+# Env: DEP_VERSION, MZNARCH, CMAKEARCH, CI_PROJECT_DIR
 set -e
 set -x
 
 : "${DEP_VERSION:?DEP_VERSION must be set}"
 : "${CI_PROJECT_DIR:?CI_PROJECT_DIR must be set}"
 
-# Fetch the pinned Gecode source (replaces the old submodule checkout).
 if [ ! -d "$CI_PROJECT_DIR/gecode/.git" ]; then
 	git clone --quiet https://github.com/Gecode/gecode "$CI_PROJECT_DIR/gecode"
 fi
@@ -38,9 +32,8 @@ fi
 mkdir -p {build,vendor}/$DIR
 cd build/$DIR
 
-# libminizinc links Gecode statically, so build only the static libs. Gecode 6.4
-# renamed these options with a GECODE_ prefix (the unprefixed ones are deprecated
-# and silently ignored, which produced shared-only builds).
+# Gecode 6.4 renamed these options with a GECODE_ prefix; the unprefixed ones
+# are silently ignored, which produced shared-only builds.
 if [[ "$MZNARCH" == "wasm" ]]; then
 	# Gist and CP-Profiler are unavailable under emscripten.
 	emcmake cmake -G"Unix Makefiles" "$CI_PROJECT_DIR/gecode" \

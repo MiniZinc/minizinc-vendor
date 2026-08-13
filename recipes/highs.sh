@@ -1,11 +1,7 @@
 #!/bin/bash
 # Build HiGHS into $CI_PROJECT_DIR/vendor/highs.
 #
-# Inputs (environment):
-#   DEP_VERSION    HiGHS git tag, e.g. "v1.15.1"   (was highs-version.sh)
-#   MZNARCH        platform selector
-#   CMAKEARCH      CMake generator (e.g. "Ninja")  — unused on wasm
-#   CI_PROJECT_DIR build root
+# Env: DEP_VERSION, MZNARCH, CMAKEARCH, CI_PROJECT_DIR
 set -e
 set -x
 

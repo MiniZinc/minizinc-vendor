@@ -2,15 +2,7 @@
 # Build the OR-Tools CP-SAT FlatZinc solver (fzn-cp-sat) into
 # $CI_PROJECT_DIR/vendor/or-tools using Bazel.
 #
-# Inputs (environment):
-#   DEP_VERSION      OR-Tools git tag, e.g. "v9.15"       (was or-tools-version.sh)
-#   MZNARCH          platform selector
-#   CI_PROJECT_DIR   build root
-#   BAZEL_VERSION    pinned Bazel, e.g. "8.6.0"           (→ USE_BAZEL_VERSION)
-#   BAZELISK_VERSION pinned bazelisk tag, e.g. "v1.28.1"
-#   BAZELISK_ASSET   bazelisk release asset for this platform
-#                    (e.g. "linux-amd64"; empty on alpine, which uses apk bazel8)
-#   BAZELISK_SHA256  expected sha256 of that asset ("" to skip verification)
+# Env: DEP_VERSION, MZNARCH, CI_PROJECT_DIR, BAZEL_VERSION, BAZELISK_VERSION, BAZELISK_ASSET
 set -e
 set -x
 
