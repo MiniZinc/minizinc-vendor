@@ -116,11 +116,6 @@ track   = { kind = "github-release", repo = "bazelbuild/bazelisk", pattern = '^v
 version = "1.2.0"
 track   = { kind = "bcr-module", module = "rules_pkg" }
 
-[toolchain.openssl]
-# Provenance only: the win64 runtime DLLs are checked in under resources/openssl-win64.
-# The bot cannot auto-bump binary DLLs, so it opens an advisory issue instead.
-version = "3.5.1"
-track   = { kind = "manual" }
 
 [toolchain.qt]
 # Qt for gecode_gist, one version across linux/osx/win64. Downloaded on the fly via
@@ -204,3 +199,16 @@ version      = "0.14.0"
 artifact_dir = "chuffed"
 platforms    = ["linux", "linux-arm64", "musl", "musl-arm64", "osx", "win64", "wasm"]
 track        = { kind = "git-tags", repo = "https://github.com/Chuffed/chuffed", pattern = '^(\d+\.\d+\.\d+)$' }
+
+[deps.openssl]
+# Prebuilt Windows runtime DLLs, checked in under resources/openssl-win64 (there
+# is no suitable upstream redistributable). Published like any other dependency
+# so the MiniZincIDE Windows installer can consume it: the old pipeline injected
+# these during the compose step, which per-dependency releases do not have.
+# The bot cannot auto-bump binary DLLs, so it opens an advisory issue instead.
+recipe       = "recipes/openssl.sh"
+version      = "3.5.1"
+overlay      = "resources/openssl-win64"
+artifact_dir = "openssl"
+platforms    = ["win64"]
+track        = { kind = "manual" }
