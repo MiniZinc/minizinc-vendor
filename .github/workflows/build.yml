@@ -122,8 +122,10 @@ jobs:
           version: ${{ matrix.qt_version }}
 
       - name: Set up MSVC (win64)
-        if: matrix.platform == 'win64'
+        if: startsWith(matrix.platform, 'win64')
         uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.platform == 'win64-arm' && 'arm64' || 'x64' }}
 
       - name: Build
         shell: bash

@@ -60,6 +60,14 @@ container = ""                  # native
 mznarch   = "win64"
 triple    = "x86_64-windows"
 
+[platforms.win64-arm]
+# mznarch stays "win64": recipes branch on it for MSVC behaviour, which is the
+# same on ARM64 (e.g. or-tools' -Wno-implicit-fallthrough patch).
+runner    = "windows-11-arm"
+container = ""
+mznarch   = "win64"
+triple    = "aarch64-windows"
+
 [platforms.wasm]
 runner    = "ubuntu-24.04"
 container = "emscripten/emsdk:3.1.64"   # TODO: pin @sha256:...
@@ -136,7 +144,7 @@ track   = { kind = "manual" }
 recipe       = "recipes/highs.sh"
 version      = "v1.15.1"
 artifact_dir = "highs"
-platforms    = ["linux", "linux-arm64", "musl", "musl-arm64", "osx", "win64", "wasm"]
+platforms    = ["linux", "linux-arm64", "musl", "musl-arm64", "osx", "win64", "win64-arm", "wasm"]
 track        = { kind = "git-tags", repo = "https://github.com/ERGO-Code/HiGHS", pattern = 'v(\d+\.\d+\.\d+)' }
 
 [deps.or-tools]
@@ -145,7 +153,7 @@ version      = "v9.15"
 uses         = ["bazel", "bazelisk", "rules_pkg"]
 overlay      = "resources/or-tools"     # rebuilt in pr-validate if these files change
 artifact_dir = "or-tools"
-platforms    = ["linux", "linux-arm64", "musl", "musl-arm64", "osx", "win64"]   # no wasm
+platforms    = ["linux", "linux-arm64", "musl", "musl-arm64", "osx", "win64", "win64-arm"]   # no wasm
 track        = { kind = "git-tags", repo = "https://github.com/google/or-tools", pattern = 'v(\d+\.\d+)' }
 
 [deps.gecode]
@@ -154,7 +162,7 @@ recipe       = "recipes/gecode.sh"
 # tracked pattern captures the same bare number so the bot compares like for like.
 version      = "6.4.0"
 artifact_dir = "gecode"
-platforms    = ["linux", "linux-arm64", "musl", "musl-arm64", "osx", "win64", "wasm"]
+platforms    = ["linux", "linux-arm64", "musl", "musl-arm64", "osx", "win64", "win64-arm", "wasm"]
 track        = { kind = "git-tags", repo = "https://github.com/Gecode/gecode", pattern = 'release-(\d+\.\d+\.\d+)' }
 
 [deps.gecode_gist]
@@ -169,7 +177,7 @@ platforms    = ["linux", "osx", "win64"]   # NOT arm64 / musl / wasm
 recipe       = "recipes/chuffed.sh"
 version      = "0.14.0"
 artifact_dir = "chuffed"
-platforms    = ["linux", "linux-arm64", "musl", "musl-arm64", "osx", "win64", "wasm"]
+platforms    = ["linux", "linux-arm64", "musl", "musl-arm64", "osx", "win64", "win64-arm", "wasm"]
 track        = { kind = "git-tags", repo = "https://github.com/Chuffed/chuffed", pattern = '^(\d+\.\d+\.\d+)$' }
 
 [deps.openssl]

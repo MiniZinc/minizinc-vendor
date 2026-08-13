@@ -58,6 +58,7 @@ BAZELISK_ASSET = {
     "musl-arm64": "",
     "osx": "darwin-arm64",     # macos-14 runner is arm64
     "win64": "windows-amd64",
+    "win64-arm": "windows-arm64",
 }
 
 
