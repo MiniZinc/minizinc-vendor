@@ -1,16 +1,10 @@
 #!/bin/bash
-# "Build" OpenSSL for Windows: the runtime DLLs are prebuilt and checked in under
-# resources/openssl-win64, so this recipe only stages them into the vendor tree.
+# Stage the prebuilt Windows OpenSSL DLLs from resources/openssl-win64 into the
+# vendor tree. Published as a normal dependency because the IDE's Windows
+# installer needs libssl/libcrypto; the old pipeline injected them during the
+# compose step, which per-dependency releases do not have.
 #
-# They are published as an ordinary per-dependency release asset because the
-# MiniZinc IDE's Windows installer needs libssl/libcrypto next to the compiler.
-# The old GitLab pipeline injected them into `bundle-win64` during a compose
-# step; per-dependency releases have no compose step, so without this the DLLs
-# would never reach any consumer.
-#
-# Inputs (environment):
-#   DEP_VERSION    OpenSSL version the checked-in DLLs correspond to
-#   CI_PROJECT_DIR build root
+# Env: DEP_VERSION, CI_PROJECT_DIR
 set -e
 set -x
 
@@ -25,5 +19,4 @@ DST="$CI_PROJECT_DIR/vendor/openssl"
 mkdir -p "$DST"
 cp -a "$SRC/." "$DST/"
 
-# Fail loudly rather than publishing an empty archive.
 ls "$DST"/*.dll >/dev/null
