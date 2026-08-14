@@ -211,19 +211,23 @@ def apply(name: str, to: str) -> None:
 
     in_section = False
     field_re = re.compile(rf"^(\s*){target_field}(\s*)=\s*.*$")
+    rebuild_re = re.compile(r"^\s*rebuild\s*=")
     changed = False
-    for i, line in enumerate(lines):
+    out = []
+    for line in lines:
         stripped = line.strip()
         if stripped.startswith("["):
             in_section = stripped == header
-            continue
-        if in_section and field_re.match(line):
+        elif in_section and not changed and field_re.match(line):
             indent = field_re.match(line).group(1)
-            lines[i] = f'{indent}{target_field} = "{to}"\n'
+            line = f'{indent}{target_field} = "{to}"\n'
             changed = True
-            break
+        elif in_section and rebuild_re.match(line):
+            continue  # a new upstream version starts its rebuild count over
+        out.append(line)
     if not changed:
         raise SystemExit(f"could not find `{target_field}` in {header}")
+    lines = out
     with open(MANIFEST, "w") as f:
         f.writelines(lines)
 

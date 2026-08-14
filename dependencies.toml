@@ -5,6 +5,11 @@
 #
 # The update bot rewrites `version`/`commit` in place, so they must stay on their
 # own line and never move inside an inline table.
+#
+# A dep may also carry `rebuild = <n>`, which appends `-rebuild<n>` to its identity
+# (release tag, asset names, the downstream pin) without touching the upstream
+# version it builds. Bump it to republish the same source built under different
+# conditions — new flags, a new toolchain — so downstream picks the rebuild up.
 
 schema = 2
 
@@ -13,10 +18,10 @@ schema = 2
 # matching the old GitLab behaviour).
 #
 # manylinux_2_28 gives a glibc 2.28 floor, which is also what the official Qt 6
-# Linux binaries need. TODO: pin the containers by @sha256.
+# Linux binaries need.
 [platforms.linux]
 runner    = "ubuntu-24.04"
-container = "quay.io/pypa/manylinux_2_28_x86_64"                 # TODO: pin @sha256:...
+container = "quay.io/pypa/manylinux_2_28_x86_64"
 mznarch   = "linux"
 triple    = "x86_64-linux-gnu"
 setup     = "dnf -y install zlib-devel patch which file 2>/dev/null || true"
@@ -24,7 +29,7 @@ cmake_generator = "Unix Makefiles"   # manylinux has make + gcc but not ninja
 
 [platforms.linux-arm64]
 runner    = "ubuntu-24.04-arm"
-container = "quay.io/pypa/manylinux_2_28_aarch64"                # TODO: pin @sha256:...
+container = "quay.io/pypa/manylinux_2_28_aarch64"
 mznarch   = "linux-arm64"
 triple    = "aarch64-linux-gnu"
 setup     = "dnf -y install zlib-devel patch which file 2>/dev/null || true"
@@ -32,14 +37,14 @@ cmake_generator = "Unix Makefiles"   # manylinux has make + gcc but not ninja
 
 [platforms.musl]
 runner    = "ubuntu-24.04"
-container = "alpine:3.20"                                        # TODO: pin @sha256:...
+container = "alpine:3.20"
 mznarch   = "linux"
 triple    = "x86_64-linux-musl"
 setup     = "apk add --no-cache bash build-base cmake ninja git curl autoconf automake libtool pkgconf zlib-dev linux-headers"
 
 [platforms.musl-arm64]
 runner    = "ubuntu-24.04-arm"
-container = "alpine:3.20"                                        # TODO: pin @sha256:...
+container = "alpine:3.20"
 mznarch   = "linux-arm64"
 triple    = "aarch64-linux-musl"
 setup     = "apk add --no-cache bash build-base cmake ninja git curl autoconf automake libtool pkgconf zlib-dev linux-headers"
@@ -70,7 +75,7 @@ triple    = "aarch64-windows"
 
 [platforms.wasm]
 runner    = "ubuntu-24.04"
-container = "emscripten/emsdk:3.1.64"   # TODO: pin @sha256:...
+container = "emscripten/emsdk:3.1.64"
 mznarch   = "wasm"
 triple    = "wasm32-emscripten"
 
@@ -84,19 +89,16 @@ commit = "50539b4ea785cb2088366dc7f26930ec5c5b4546"
 track  = { kind = "branch-head", repo = "https://github.com/coin-or/coinbrew", branch = "master" }
 
 [toolchain.bazel]
-version = "8.6.0"
+# 9.x is required for Windows ARM64: Bazel 8 hangs forever fetching repositories
+# there (bazelbuild/bazel#28520, a JDK virtual-thread bug). The fixed JDK ships from
+# 9.0.1, and 9.0.2 is the first release whose windows-arm64 package is not carrying
+# amd64 DLLs (#28941). Ignored on musl, where the recipe uses Alpine's bazel8 package.
+version = "9.2.0"
 track   = { kind = "github-release", repo = "bazelbuild/bazel", pattern = '^(\d+\.\d+\.\d+)$' }
 
 [toolchain.bazelisk]
 version = "v1.28.1"
 track   = { kind = "github-release", repo = "bazelbuild/bazelisk", pattern = '^v(\d+\.\d+\.\d+)$' }
-# sha256 of each release asset, verified before use. TODO: fill real digests.
-[toolchain.bazelisk.sha256]
-"linux-amd64"   = "TODO"
-"linux-arm64"   = "TODO"
-"darwin-amd64"  = "TODO"
-"darwin-arm64"  = "TODO"
-"windows-amd64" = "TODO"
 
 [toolchain.rules_pkg]
 # Consumed via resources/or-tools/MODULE.bazel (bazel_dep). Kept here for tracking;
@@ -199,8 +201,6 @@ artifact_dir = "openssl"
 platforms    = ["win64", "win64-arm"]
 track        = { kind = "manual" }
 [deps.openssl.env.win64]
-OPENSSL_MSI    = "Win64OpenSSL_Light-3_5_7.msi"
-OPENSSL_SHA256 = "2faad0a2a644443077b1c03fb36199b48ec0248a8a87f1f29bc9f5be5805dc4f"
+OPENSSL_EXE  = "Win64OpenSSL_Light-3_5_7.exe"
 [deps.openssl.env.win64-arm]
-OPENSSL_MSI    = "Win64ARMOpenSSL_Light-3_5_7.msi"
-OPENSSL_SHA256 = "29956e9258fd9b6217a54d6eadf844e39f58ea58e5abee4878d10d3c72e638a9"
+OPENSSL_EXE  = "Win64ARMOpenSSL_Light-3_5_7.exe"

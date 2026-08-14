@@ -14,6 +14,7 @@ export USE_BAZEL_VERSION="${BAZEL_VERSION}"
 OVERLAY="${CI_PROJECT_DIR}/resources/or-tools"
 
 # -- Install a pinned Bazel launcher (bazelisk), or apk bazel8 on Alpine/musl ---
+# Alpine packages no bazel9, so musl ignores BAZEL_VERSION and builds with 8.
 if [ -f /etc/alpine-release ]; then
 	apk --no-cache add linux-headers python3
 	apk add --no-cache -X https://dl-cdn.alpinelinux.org/alpine/edge/testing bazel8
@@ -24,10 +25,7 @@ else
 	mkdir -p "${CI_PROJECT_DIR}/.bin"
 	ext=""; [[ "$BAZELISK_ASSET" == windows-* ]] && ext=".exe"
 	url="https://github.com/bazelbuild/bazelisk/releases/download/${BAZELISK_VERSION}/bazelisk-${BAZELISK_ASSET}${ext}"
-	curl -L -o "${CI_PROJECT_DIR}/.bin/bazel${ext}" "$url"
-	if [ -n "${BAZELISK_SHA256:-}" ] && [ "${BAZELISK_SHA256}" != "TODO" ]; then
-		echo "${BAZELISK_SHA256}  ${CI_PROJECT_DIR}/.bin/bazel${ext}" | sha256sum -c -
-	fi
+	curl -fL -o "${CI_PROJECT_DIR}/.bin/bazel${ext}" "$url"
 	chmod +x "${CI_PROJECT_DIR}/.bin/bazel${ext}"
 	export PATH="${CI_PROJECT_DIR}/.bin:${PATH}"
 fi

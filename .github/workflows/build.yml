@@ -93,6 +93,8 @@ jobs:
         include: ${{ fromJSON(needs.matrix.outputs.include) }}
     runs-on: ${{ matrix.runner }}
     name: ${{ matrix.label }}
+    # A wedged build should fail in two hours, not run into the six-hour job limit.
+    timeout-minutes: 120
     concurrency:
       group: build-${{ matrix.dep }}-${{ matrix.platform }}
       cancel-in-progress: false

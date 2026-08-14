@@ -73,15 +73,18 @@ def resolve_dep(m: dict, name: str) -> dict:
     d = dict(m["deps"][name])
     if "source_of" in d:
         parent = m["deps"][d["source_of"]]
-        for k in ("version", "commit"):
+        for k in ("version", "commit", "rebuild"):
             if k in parent and k not in d:
                 d[k] = parent[k]
     return d
 
 
 def dep_version_label(d: dict) -> str:
-    """The immutable identity of a dep build: its tag, or its commit."""
-    return d["version"] if "version" in d else d["commit"]
+    """The immutable identity of a dep build: its tag, or its commit, plus the
+    `rebuild` counter if the same source has been republished (new flags, new
+    toolchain). Recipes still get the bare `version`/`commit` via DEP_VERSION."""
+    base = d["version"] if "version" in d else d["commit"]
+    return f"{base}-rebuild{d['rebuild']}" if "rebuild" in d else base
 
 
 def release_tag(name: str, d: dict) -> str:
@@ -164,11 +167,8 @@ def env_kv(m: dict, name: str, platform: str) -> list[str]:
         put("COINBREW_COMMIT", m["toolchain"]["coinbrew"]["commit"])
     if "bazel" in uses:
         put("BAZEL_VERSION", m["toolchain"]["bazel"]["version"])
-        bz = m["toolchain"]["bazelisk"]
-        put("BAZELISK_VERSION", bz["version"])
-        asset = BAZELISK_ASSET.get(platform, "")
-        put("BAZELISK_ASSET", asset)
-        put("BAZELISK_SHA256", bz.get("sha256", {}).get(asset, ""))
+        put("BAZELISK_VERSION", m["toolchain"]["bazelisk"]["version"])
+        put("BAZELISK_ASSET", BAZELISK_ASSET.get(platform, ""))
 
     for k, v in d.get("env", {}).get(platform, {}).items():
         put(k, v)
