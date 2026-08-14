@@ -123,7 +123,11 @@ def resolve_github_release(track: dict) -> str:
 def resolve_bcr_module(track: dict) -> str:
     data = _http_json(f"https://raw.githubusercontent.com/bazelbuild/bazel-central-registry"
                       f"/main/modules/{track['module']}/metadata.json")
-    versions = data.get("versions", [])
+    # BCR lists prereleases (0.62.0-rc1) and `.bcr.N` respins alongside plain
+    # versions; only the plain ones are comparable, and only they are wanted.
+    versions = [v for v in data.get("versions", []) if re.fullmatch(r"\d+(\.\d+)*", v)]
+    if not versions:
+        raise RuntimeError(f"no plain versions listed for {track['module']}")
     return max(versions, key=_version_tuple)
 
 
