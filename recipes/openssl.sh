@@ -25,21 +25,23 @@ curl -sSLo "$WORK/openssl.msi" "https://slproweb.com/download/${OPENSSL_MSI}"
 
 echo "${OPENSSL_SHA256} *$WORK/openssl.msi" | sha256sum -c -
 
-# An administrative install unpacks the MSI without installing it. msiexec
-# returns immediately, so it must be waited on explicitly or the extraction is
-# still running when we look for the DLLs. TARGETDIR needs a Windows path.
-MSI_WIN=$(cygpath -w "$WORK/openssl.msi")
-OUT_WIN=$(cygpath -w "$WORK/out")
-powershell -NoProfile -Command \
-	"\$p = Start-Process msiexec.exe -ArgumentList @('/a','$MSI_WIN','/qn','TARGETDIR=$OUT_WIN') -Wait -PassThru -NoNewWindow; exit \$p.ExitCode"
+# Unpack with 7-Zip rather than `msiexec /a`: the administrative install returns
+# success on these MSIs but writes nothing. 7z is preinstalled on the runners and
+# is synchronous. The payload sits in an embedded CAB, so extract that too.
+SEVENZIP=7z
+command -v "$SEVENZIP" >/dev/null || SEVENZIP=7za
+"$SEVENZIP" x -y -o"$WORK/out" "$WORK/openssl.msi" >/dev/null
+find "$WORK/out" -iname '*.cab' | while read -r c; do
+	"$SEVENZIP" x -y -o"$WORK/out" "$c" >/dev/null
+done
 
 # Show what was unpacked: if the DLL names ever change, the failure below is
 # otherwise just an empty glob.
 find "$WORK/out" -type f | head -30
 
-# The DLL names carry the ABI version and the arch (e.g. libcrypto-3-x64.dll,
-# libcrypto-3-arm64.dll), so copy whatever the installer produced.
-find "$WORK/out" \( -name 'libcrypto-*.dll' -o -name 'libssl-*.dll' \) | while read -r f; do
+# Names embed the ABI version and arch (libcrypto-3-x64.dll, libcrypto-3-arm64.dll)
+# and 7-Zip may rewrite them, so match loosely.
+find "$WORK/out" \( -iname '*crypto*.dll' -o -iname '*ssl*.dll' \) | while read -r f; do
 	cp "$f" "$DST/"
 done
 find "$WORK/out" \( -iname 'LICENSE*' -o -iname '*license*.txt' \) | head -1 | while read -r f; do

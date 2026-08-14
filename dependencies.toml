@@ -165,6 +165,14 @@ artifact_dir = "gecode"
 platforms    = ["linux", "linux-arm64", "musl", "musl-arm64", "osx", "win64", "win64-arm", "wasm"]
 track        = { kind = "git-tags", repo = "https://github.com/Gecode/gecode", pattern = 'release-(\d+\.\d+\.\d+)' }
 
+[deps.gecode.env.win64-arm]
+# /bigobj: extensional-tuple-set.cpp exceeds MSVC's object-file section limit
+# (C1128) when targeting ARM64.
+# /Zc:__cplusplus: Gecode's bundled Boost.Interval has no ARM64 hardware rounding
+# control and falls back to its C99 path only when __cplusplus reports C++11 or
+# later. MSVC reports 199711L unless this flag is given, so the header #errors.
+CXXFLAGS = "/bigobj /Zc:__cplusplus"
+
 [deps.gecode_gist]
 recipe       = "recipes/gecode.sh"
 gist         = true             # → gecode.sh 1

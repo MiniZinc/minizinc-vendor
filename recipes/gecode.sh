@@ -29,12 +29,6 @@ else
 	ENABLE_QT=FALSE
 fi
 
-# extensional-tuple-set.cpp exceeds MSVC's object-file section limit (C1128) when
-# targeting ARM64; /bigobj is harmless on x64 so apply it to all MSVC targets.
-if [[ "$MZNARCH" == "win64" ]]; then
-	export CXXFLAGS="${CXXFLAGS:-} /bigobj"
-fi
-
 mkdir -p {build,vendor}/$DIR
 cd build/$DIR
 
