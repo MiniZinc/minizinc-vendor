@@ -59,6 +59,13 @@ container = ""                  # native (no container)
 mznarch   = "osx"
 triple    = "aarch64-apple-darwin"
 
+[platforms.osx.env]
+# Without this the binaries inherit the runner's own macOS version as their
+# floor, which would silently rise with the image. 12.0 because Qt 6.9 is built
+# for it (so gecode_gist and the IDE cannot go lower), and arm64 itself bottoms
+# out at macOS 11. CMake reads this; or-tools needs the flag in its .bazelrc.
+MACOSX_DEPLOYMENT_TARGET = "12.0"
+
 [platforms.win64]
 runner    = "windows-2022"
 container = ""                  # native

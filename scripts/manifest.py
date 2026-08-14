@@ -170,6 +170,9 @@ def env_kv(m: dict, name: str, platform: str) -> list[str]:
         put("BAZELISK_VERSION", m["toolchain"]["bazelisk"]["version"])
         put("BAZELISK_ASSET", BAZELISK_ASSET.get(platform, ""))
 
+    # Platform-wide first, so a dependency can still override it.
+    for k, v in plat.get("env", {}).items():
+        put(k, v)
     for k, v in d.get("env", {}).get(platform, {}).items():
         put(k, v)
     return out
