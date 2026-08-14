@@ -4,6 +4,12 @@ build --dynamic_mode=off
 # Enable automatic platform-specific config sections (build:windows, build:linux, build:macos).
 common --enable_platform_specific_config
 
+# Bazel 9 removed the built-in rule and provider globals and emptied the autoload list,
+# but or-tools pins BCR modules that predate that (bzip2's BUILD calls a bare cc_binary,
+# rules_go 0.53 uses a bare CcInfo). This is Bazel 8's default list plus +@rules_cc, which
+# restores Bazel 8 semantics; drop it once or-tools' dependency set is Bazel 9 clean.
+common --incompatible_autoload_externally=+@rules_cc,+@rules_python,+@rules_android,+java_common,+JavaInfo,+JavaPluginInfo,ProguardSpecProvider,java_binary,java_import,java_library,java_plugin,java_test,java_runtime,java_toolchain,java_package_configuration,@com_google_protobuf,@rules_shell
+
 # Build optimized binaries by default.
 build -c opt
 
