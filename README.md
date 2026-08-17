@@ -1,92 +1,89 @@
 # minizinc-vendor
 
-Reproducible builds of the third-party solvers and dependencies that ship with
-MiniZinc (CBC, HiGHS, OR-Tools CP-SAT, Gecode, Gecode+Gist, Chuffed), for every
-supported platform.
+Reproducible builds of the third-party dependencies that ship with MiniZinc —
+CBC, HiGHS, OR-Tools CP-SAT, Gecode, Gecode+Gist, Chuffed, and the OpenSSL
+runtime for the Windows installer — for every supported platform.
 
-Unlike the previous GitLab setup — where solver versions floated and downstream
-projects consumed "latest" — every version here is **explicitly pinned** in a
-single manifest, each build is **published individually** as a release asset, and
-upstream updates arrive as **Dependabot-style pull requests**.
+Every version is pinned in one manifest, every build is published individually,
+and upstream updates arrive as pull requests.
 
 ## Model
 
-Each `(dependency, platform)` build is published as one asset on a **per-dependency
-GitHub Release** tagged `<dep>-<version>`:
+Each `(dependency, platform)` build is one asset on a per-dependency GitHub
+Release tagged `<dep>-<version>`:
 
 ```
-Release  gecode-eebbc1bfaef1decd3ab6a3c583c7b55f5fe29600
-  asset    gecode-eebbc1b…-x86_64-linux-gnu.tar.gz
-  asset    gecode-eebbc1b…-aarch64-linux-gnu.tar.gz
-  asset    gecode-eebbc1b…-aarch64-apple-darwin.tar.gz
+Release  gecode-6.4.0
+  asset    gecode-6.4.0-x86_64-linux-gnu.tar.gz
+  asset    gecode-6.4.0-aarch64-apple-darwin.tar.gz
   ...
 ```
 
-There is **no compose/bundle step and no separate artifact registry**: the release
-*is* the artifact, and "already built?" is simply "does that asset exist?". So
-bumping one dependency rebuilds only that dependency (its new-version assets are
-missing); every other dependency's assets already exist and are skipped. Old
-versions stay published, so any pinned build can be re-downloaded without rebuilding.
+There is no compose step and no separate artifact registry: the release *is* the
+artifact, and "already built?" is "does that asset exist?". Bumping one
+dependency therefore rebuilds only that dependency — every other asset already
+exists and is skipped. Old versions stay published, so any pinned build can be
+re-downloaded without rebuilding.
 
-Consumers (e.g. libminizinc) keep a per-dependency lock file and download each
-dependency's asset for their system triple individually.
+Consumers (libminizinc, and through it the IDE) keep a `vendor.lock` of per-
+dependency versions and download the asset for their own triple.
 
 ## Layout
 
-- **`dependencies.toml`** — the single source of truth: pins every solver
-  version/commit and every toolchain version (coinbrew, Bazel, bazelisk, rules_pkg,
-  OpenSSL, Qt), plus each platform's runner, (digest-pinnable) base image, system
-  triple, and a `setup` command that installs build deps at job time.
-- **Base images** are common public ones — `manylinux_2_28` (glibc 2.28, low floor)
-  for glibc-linux, `alpine` for musl, `emscripten/emsdk` for wasm — with deps
-  installed on the runner via the platform `setup` (no bespoke build image). Qt for
-  `gecode_gist` is fetched on demand: `aqtinstall` inside the linux container, and
-  `install-qt-action` on the native osx/win64 runners.
-- **`recipes/*.sh`** — build one dependency each; versions come from the environment
-  (injected from the manifest), never hard-coded.
-- **`scripts/manifest.py`** — expands the `(dependency × platform)` matrix, computes
-  each cell's release tag / asset name / recipe env, and emits the resolved lockfile.
-- **`scripts/update_check.py`** — the update bot: resolves the newest upstream version
-  of each tracked entry and rewrites a single pin.
+- **`dependencies.toml`** — the single source of truth: every solver and
+  toolchain pin, and every platform's runner, base image, triple and `setup`
+  command. A dep may also carry `rebuild = <n>` to republish the same source
+  under new flags or a new toolchain.
+- **`recipes/*.sh`** — one per dependency. Versions arrive in the environment
+  (injected from the manifest), never hard-coded. Each builds into
+  `$BUILD_ROOT/vendor/<artifact_dir>`.
+- **`resources/`** — overlay files applied to an upstream source tree, currently
+  the OR-Tools packaging target.
+- **`scripts/manifest.py`** — expands the `(dependency × platform)` matrix and
+  computes each cell's release tag, asset name and recipe environment.
+- **`scripts/prune_built.py`** — drops matrix cells whose asset already exists.
+- **`scripts/update_check.py`** — resolves the newest upstream version of each
+  tracked pin, and rewrites one pin in place.
+
+Base images are stock public ones — `manylinux_2_28` (glibc 2.28 floor) for
+glibc-linux, `alpine` for musl, `emscripten/emsdk` for wasm — with build deps
+installed at job time via the platform's `setup`, so there is no bespoke build
+image to maintain. Qt for `gecode_gist` is fetched on demand: `aqtinstall`
+inside the linux container, `install-qt-action` on the native runners.
 
 ### Workflows
 
 | Workflow | Trigger | Does |
 |---|---|---|
-| `build.yml` | reusable / dispatch | matrix build; build + (optionally) publish each missing asset |
-| `publish.yml` | push to `main` / dispatch | build & publish all missing assets, then open per-dep bump PRs in libminizinc |
-| `update-bot.yml` | weekly / dispatch | one PR per outdated dependency (bumps this manifest) |
-| `pr-validate.yml` | PR touching manifest/recipes/resources | build only the changed dependencies (no publish) |
+| `build.yml` | reusable / dispatch | matrix build; build and optionally publish each missing asset |
+| `publish.yml` | push to `main` / dispatch | publish all missing assets, then open a bump PR per dependency in libminizinc |
+| `update-bot.yml` | weekly / dispatch | one PR per outdated pin |
+| `pr-validate.yml` | PR touching the manifest, a recipe or a resource | rebuild just the affected dependencies, publishing nothing |
 
-### System triples
+The two bot workflows mint installation tokens from a GitHub App via the org
+secrets `MINIZINC_BOT_APP_ID` and `MINIZINC_BOT_APP_KEY`; `GITHUB_TOKEN` cannot
+write cross-repo, and PRs it creates do not trigger CI. Publishing this repo's
+own releases uses `GITHUB_TOKEN`.
 
-`x86_64-linux-gnu`, `aarch64-linux-gnu`, `x86_64-linux-musl`, `aarch64-linux-musl`,
-`aarch64-apple-darwin`, `x86_64-windows`, `wasm32-emscripten`.
+### Platforms
 
-## One-time setup (TODOs before the first publish)
+`x86_64-linux-gnu`, `aarch64-linux-gnu`, `x86_64-linux-musl`,
+`aarch64-linux-musl`, `aarch64-apple-darwin`, `x86_64-windows`,
+`aarch64-windows`, `wasm32-emscripten`.
 
-1. **Pin base images by digest.** Replace the `# TODO: pin @sha256:...` tags on the
-   `[platforms.*].container` entries in `dependencies.toml`.
-2. **Fill bazelisk `sha256`** for each asset in `[toolchain.bazelisk.sha256]`.
-3. **GitHub App for bump PRs.** Register one GitHub App in the org (Contents +
-   Pull requests: read/write), installed on `minizinc-vendor` and `libminizinc`, and
-   store its App ID / private key as org secrets **`MINIZINC_BOT_APP_ID`** and
-   **`MINIZINC_BOT_APP_KEY`**. `update-bot.yml` and `publish.yml` mint short-lived
-   tokens from it so their bump PRs trigger CI (`GITHUB_TOKEN`-created PRs don't, and
-   it can't write cross-repo). Publishing this repo's own releases uses the built-in
-   `GITHUB_TOKEN`.
-4. **Self-hosted runners (optional).** Everything starts on GitHub-hosted runners.
-   If `or-tools:win64` (Bazel + MSVC) exhausts the hosted disk/time, point that
-   platform's `runner` in the manifest at a self-hosted label — no workflow edit needed.
+Not every dependency covers every platform; see each `platforms` list in the
+manifest. To move one platform to a self-hosted runner, change its `runner`
+field — no workflow edit needed.
 
 ## Local use
 
 ```sh
-pip install tomli           # only needed on Python < 3.11
+pip install tomli                              # only on Python < 3.11
 python3 scripts/manifest.py versions           # dep -> pinned version
 python3 scripts/manifest.py release-tag --dep gecode
 python3 scripts/manifest.py asset --dep cbc --platform win64
 python3 scripts/manifest.py matrix | python3 -m json.tool
-python3 scripts/update_check.py check          # what's outdated upstream
+python3 scripts/manifest.py env --dep or-tools --platform linux
 python3 scripts/manifest.py lock               # resolved lockfile
+python3 scripts/update_check.py check          # what is outdated upstream
 ```

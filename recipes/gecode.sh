@@ -1,18 +1,18 @@
 #!/bin/bash
-# Build Gecode into $CI_PROJECT_DIR/vendor/gecode (or vendor/gecode_gist with Gist).
+# Build Gecode into $BUILD_ROOT/vendor/gecode (or vendor/gecode_gist with Gist).
 # Usage: gecode.sh {build_with_gist:0/1}
 #
-# Env: DEP_VERSION, MZNARCH, CMAKEARCH, CI_PROJECT_DIR
+# Env: DEP_VERSION, MZNARCH, CMAKEARCH, BUILD_ROOT
 set -e
 set -x
 
 : "${DEP_VERSION:?DEP_VERSION must be set}"
-: "${CI_PROJECT_DIR:?CI_PROJECT_DIR must be set}"
+: "${BUILD_ROOT:?BUILD_ROOT must be set}"
 
-if [ ! -d "$CI_PROJECT_DIR/gecode/.git" ]; then
-	git clone --quiet https://github.com/Gecode/gecode "$CI_PROJECT_DIR/gecode"
+if [ ! -d "$BUILD_ROOT/gecode/.git" ]; then
+	git clone --quiet https://github.com/Gecode/gecode "$BUILD_ROOT/gecode"
 fi
-git -C "$CI_PROJECT_DIR/gecode" checkout --quiet "release-$DEP_VERSION"
+git -C "$BUILD_ROOT/gecode" checkout --quiet "release-$DEP_VERSION"
 
 DIR="gecode"
 ARCH="arm64"
@@ -36,18 +36,18 @@ cd build/$DIR
 # are silently ignored, which produced shared-only builds.
 if [[ "$MZNARCH" == "wasm" ]]; then
 	# Gist and CP-Profiler are unavailable under emscripten.
-	emcmake cmake -G"Unix Makefiles" "$CI_PROJECT_DIR/gecode" \
+	emcmake cmake -G"Unix Makefiles" "$BUILD_ROOT/gecode" \
 		-DCMAKE_BUILD_TYPE=MinSizeRel \
-		-DCMAKE_INSTALL_PREFIX="$CI_PROJECT_DIR/vendor/$DIR" \
+		-DCMAKE_INSTALL_PREFIX="$BUILD_ROOT/vendor/$DIR" \
 		-DGECODE_BUILD_SHARED=OFF -DGECODE_BUILD_STATIC=ON \
 		-DGECODE_ENABLE_GIST=FALSE -DGECODE_ENABLE_QT=FALSE \
 		-DGECODE_ENABLE_CPPROFILER=FALSE
 	cmake --build . --config MinSizeRel
 	cmake --build . --config MinSizeRel --target install
 else
-	cmake -G"$CMAKEARCH" "$CI_PROJECT_DIR/gecode" \
+	cmake -G"$CMAKEARCH" "$BUILD_ROOT/gecode" \
 		-DCMAKE_BUILD_TYPE=Release \
-		-DCMAKE_INSTALL_PREFIX="$CI_PROJECT_DIR/vendor/$DIR" \
+		-DCMAKE_INSTALL_PREFIX="$BUILD_ROOT/vendor/$DIR" \
 		-DGECODE_BUILD_SHARED=OFF -DGECODE_BUILD_STATIC=ON \
 		-DGECODE_ENABLE_GIST=${ENABLE_GIST} -DGECODE_ENABLE_QT=${ENABLE_QT} \
 		-DGECODE_ENABLE_CPPROFILER=TRUE \

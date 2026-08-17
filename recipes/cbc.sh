@@ -1,13 +1,13 @@
 #!/bin/bash
-# Build COIN-OR CBC into $CI_PROJECT_DIR/vendor/cbc.
+# Build COIN-OR CBC into $BUILD_ROOT/vendor/cbc.
 #
-# Env: DEP_VERSION, COINBREW_COMMIT, MZNARCH, CI_PROJECT_DIR
+# Env: DEP_VERSION, MZNARCH, BUILD_ROOT; COINBREW_COMMIT (source builds), CBC_MSVC_ASSET (win64)
 set -e
 set -x
 
 : "${DEP_VERSION:?DEP_VERSION must be set}"
 : "${COINBREW_COMMIT:?COINBREW_COMMIT must be set}"
-: "${CI_PROJECT_DIR:?CI_PROJECT_DIR must be set}"
+: "${BUILD_ROOT:?BUILD_ROOT must be set}"
 
 # Windows uses COIN-OR's own MSVC build rather than coinbrew: the autotools build
 # under MSVC hits a libtool bug that mis-combines convenience libraries, dropping
@@ -16,7 +16,7 @@ set -x
 # the same prefix layout coinbrew would install.
 if [[ "$MZNARCH" == "win64" ]]; then
 	: "${CBC_MSVC_ASSET:?CBC_MSVC_ASSET must be set}"
-	dst="$CI_PROJECT_DIR/vendor/cbc"
+	dst="$BUILD_ROOT/vendor/cbc"
 	rm -rf "$dst" && mkdir -p "$dst"
 	curl -fsSLo cbc-msvc.zip \
 		"https://github.com/coin-or/Cbc/releases/download/releases/${DEP_VERSION}/${CBC_MSVC_ASSET}"
@@ -56,7 +56,7 @@ else
 	exit 1
 fi
 
-config_opts+=" --prefix=${CI_PROJECT_DIR}/vendor/cbc"
+config_opts+=" --prefix=${BUILD_ROOT}/vendor/cbc"
 
 # coinbrew requires bash >= 4; macOS ships bash 3.2, so use a modern bash there.
 COINBREW_BASH="bash"

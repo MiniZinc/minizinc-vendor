@@ -7,16 +7,16 @@
 # Note slproweb only keeps the newest patch release per branch, so a pinned
 # version eventually 404s and has to be bumped; the update bot tracks this.
 #
-# Env: DEP_VERSION, MZNARCH, OPENSSL_EXE, CI_PROJECT_DIR
+# Env: DEP_VERSION, MZNARCH, OPENSSL_EXE, BUILD_ROOT
 set -e
 set -x
 
 : "${DEP_VERSION:?DEP_VERSION must be set}"
 : "${OPENSSL_EXE:?OPENSSL_EXE must be set}"
-: "${CI_PROJECT_DIR:?CI_PROJECT_DIR must be set}"
+: "${BUILD_ROOT:?BUILD_ROOT must be set}"
 
-DST="$CI_PROJECT_DIR/vendor/openssl"
-WORK="$CI_PROJECT_DIR/.openssl"
+DST="$BUILD_ROOT/vendor/openssl"
+WORK="$BUILD_ROOT/.openssl"
 rm -rf "$WORK" && mkdir -p "$WORK" "$DST"
 
 curl -fsSLo "$WORK/openssl.exe" "https://slproweb.com/download/${OPENSSL_EXE}"

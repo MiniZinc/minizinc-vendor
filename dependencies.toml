@@ -14,8 +14,9 @@
 schema = 2
 
 # `platform` is the libc-aware build id; `triple` is what appears in asset names.
-# `mznarch` is only a recipe input, NOT the platform identity (musl -> "linux",
-# matching the old GitLab behaviour).
+# `mznarch` is only a recipe input for upstream build systems that branch on it,
+# NOT the platform identity -- both musl platforms report "linux", and win64-arm
+# reports "win64".
 #
 # manylinux_2_28 gives a glibc 2.28 floor, which is also what the official Qt 6
 # Linux binaries need.
@@ -90,8 +91,7 @@ triple    = "wasm32-emscripten"
 [toolchain.coinbrew]
 # Replaces the historic unpinned `curl .../coinbrew/master/coinbrew` in cbc.sh.
 # coinbrew has no recent release (last tag v2.0 is from 2022 and lacks Windows
-# fixes), so we pin a `master` commit and let the bot track the branch head —
-# matching the old CI, which used master.
+# fixes), so we pin a `master` commit and let the bot track the branch head.
 commit = "50539b4ea785cb2088366dc7f26930ec5c5b4546"
 track  = { kind = "branch-head", repo = "https://github.com/coin-or/coinbrew", branch = "master" }
 

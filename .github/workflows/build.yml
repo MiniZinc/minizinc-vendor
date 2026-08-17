@@ -8,7 +8,7 @@ name: build-deps
 #
 # The job runs on the *host* runner; container platforms execute their recipe via
 # `docker run` (so JS actions like checkout never run inside the — possibly musl —
-# build image). Native platforms (osx/win64) run the recipe directly.
+# build image). Native platforms (osx, win64, win64-arm) run the recipe directly.
 
 on:
   workflow_call:
@@ -138,7 +138,7 @@ jobs:
             # recipe under bash. cell-setup.sh may export PATH (e.g. for Qt).
             docker run --rm \
               -v "$PWD:/work" -w /work \
-              --env-file cell.env -e CI_PROJECT_DIR=/work \
+              --env-file cell.env -e BUILD_ROOT=/work \
               "${{ matrix.container }}" \
               sh -c '. /work/cell-setup.sh && exec bash "${{ matrix.recipe }}" ${{ matrix.gist }}'
           else
@@ -149,7 +149,7 @@ jobs:
               [ -n "$k" ] && export "$k=$v"
             done < cell.env
             . ./cell-setup.sh
-            export CI_PROJECT_DIR="$PWD"
+            export BUILD_ROOT="$PWD"
             bash "${{ matrix.recipe }}" ${{ matrix.gist }}
           fi
 

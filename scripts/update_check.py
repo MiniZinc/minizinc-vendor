@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The upstream-update bot: a generalization of the old check-*-version.sh scripts.
+"""The upstream-update bot: resolve the newest upstream version of each tracked pin.
 
 For every dependency and toolchain entry that declares a `track`, resolve the
 latest available upstream version and compare it to what the manifest pins.
@@ -258,9 +258,11 @@ def main() -> int:
                 print(f"WARN {o['name']}: {o['error']}", file=sys.stderr)
         if args.json:
             print(json.dumps(actionable))
-        else:
+        elif actionable:
             for o in actionable:
                 print(f"{o['name']}: {o['current']} -> {o['latest']}")
+        else:
+            print("every tracked pin is up to date")
     elif args.cmd == "apply":
         apply(args.name, args.to)
     return 0

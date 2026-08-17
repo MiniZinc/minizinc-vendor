@@ -17,6 +17,11 @@ on:
 permissions:
   contents: write
 
+env:
+  # The libminizinc branch that carries the GitHub Actions setup, and so the one
+  # the bump PRs target. Becomes `develop` once the migration branch is merged.
+  LIBMZN_BRANCH: feat/github_actions
+
 jobs:
   publish:
     uses: ./.github/workflows/build.yml
@@ -38,7 +43,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           repository: MiniZinc/libminizinc
-          ref: feat/github_actions
+          ref: ${{ env.LIBMZN_BRANCH }}
           path: libminizinc
       - id: diff
         shell: bash
@@ -79,7 +84,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           repository: MiniZinc/libminizinc
-          ref: feat/github_actions
+          ref: ${{ env.LIBMZN_BRANCH }}
           token: ${{ steps.app-token.outputs.token }}
           persist-credentials: false
       - name: Bump vendor.lock line
@@ -90,7 +95,7 @@ jobs:
         with:
           token: ${{ steps.app-token.outputs.token }}
           branch: bot/bump-${{ matrix.item.dep }}
-          base: feat/github_actions
+          base: ${{ env.LIBMZN_BRANCH }}
           title: "Bump ${{ matrix.item.dep }} to ${{ matrix.item.to }}"
           body: |
             Automated bump of the pinned `${{ matrix.item.dep }}` vendor build.
