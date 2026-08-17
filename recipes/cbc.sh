@@ -9,25 +9,23 @@ set -x
 : "${COINBREW_COMMIT:?COINBREW_COMMIT must be set}"
 : "${CI_PROJECT_DIR:?CI_PROJECT_DIR must be set}"
 
-# coinbrew's autotools build needs a full Unix environment (make + autoconf +
-# automake). COIN-OR's supported Windows environment is MSYS2, not git-bash
-# (which ships none of these, causing the maintainer-mode regeneration loop).
-# Install the tools into the runner's MSYS2 and re-exec this recipe under it:
-#   MSYS2_PATH_TYPE=inherit   -> keep the Windows PATH (MSVC `cl` from msvc-dev-cmd)
-#   MSYS2_ENV_CONV_EXCL='*'   -> don't mangle Windows-path env vars (INCLUDE/LIB)
-if [[ "$MZNARCH" == "win64" && -z "${IN_MSYS2:-}" ]]; then
-	/c/msys64/usr/bin/pacman -Sy --noconfirm --needed --disable-download-timeout \
-		make autoconf automake libtool m4 perl patch pkgconf diffutils \
-		git curl wget tar
-	# Crossing runtimes drops the shell environment: git-bash's exported vars are
-	# not visible to a *different* MSYS2. Dump the full env (incl. PATH and the MSVC
-	# INCLUDE/LIB) and re-source it inside MSYS2. The final exec MUST use the
-	# explicit MSYS2 bash — a bare `bash` resolves back to git-bash via the Windows
-	# PATH and loses the env again. MSYS2_ENV_CONV_EXCL keeps Windows-path vars
-	# (INCLUDE/LIB) intact when the build spawns cl.
-	env_abs="$(cygpath -u "$(cygpath -w "$PWD")")/.win64-env.sh"
-	export -p > "$env_abs"
-	exec /c/msys64/usr/bin/bash -c '. "$1"; export IN_MSYS2=1 MSYS2_ENV_CONV_EXCL="*"; exec /c/msys64/usr/bin/bash "$2"' _ "$env_abs" "$0"
+# Windows uses COIN-OR's own MSVC build rather than coinbrew: the autotools build
+# under MSVC hits a libtool bug that mis-combines convenience libraries, dropping
+# objects from libCgl (LNK4014) and leaving cbc unlinkable. The published package
+# is the same version, built for VS2022 against the dynamic CRT, and unpacks to
+# the same prefix layout coinbrew would install.
+if [[ "$MZNARCH" == "win64" ]]; then
+	: "${CBC_MSVC_ASSET:?CBC_MSVC_ASSET must be set}"
+	dst="$CI_PROJECT_DIR/vendor/cbc"
+	rm -rf "$dst" && mkdir -p "$dst"
+	curl -fsSLo cbc-msvc.zip \
+		"https://github.com/coin-or/Cbc/releases/download/releases/${DEP_VERSION}/${CBC_MSVC_ASSET}"
+	unzip -q cbc-msvc.zip -d "$dst"
+	rm -f cbc-msvc.zip
+	# Fail here, not later in libminizinc, if the archive layout ever changes.
+	test -f "$dst/lib/libCbc.lib"
+	test -f "$dst/include/coin/CbcConfig.h"
+	exit 0
 fi
 
 rm -rf coinbrew-src
@@ -53,28 +51,6 @@ elif [[ "$MZNARCH" == "osx" ]]; then
 elif [[ "$MZNARCH" == "wasm" ]]; then
 	sed -i 's/"$config_script"/emconfigure "$config_script"/g; s/$MAKE/emmake $MAKE/g' coinbrew
 	config_opts+=" CXXFLAGS=-std=c++14"
-elif [[ "$MZNARCH" == "win64" ]]; then
-	config_opts+=" --enable-msvc --build=x86_64-w64-mingw32"
-	export CI_PROJECT_DIR=$(cygpath "${CI_PROJECT_DIR}")
-
-	# autotools maintainer-mode keeps re-running on every build (fresh-clone
-	# mtimes), and regenerating swaps COIN's working libtool for msys2's, which
-	# mis-combines MSVC convenience libraries (LNK4014 -> unresolved Cgl symbols).
-	# We can't reliably stop the tools from running, so make them HARMLESS: shadow
-	# them with stubs that only `touch` their output (satisfying make and breaking
-	# the regen loop) instead of regenerating — COIN's shipped libtool is kept.
-	fakebin="${CI_PROJECT_DIR}/.fake-autotools"
-	rm -rf "$fakebin"; mkdir -p "$fakebin"
-	printf '#!/bin/sh\ntouch configure\n'  > "$fakebin/autoconf"
-	printf '#!/bin/sh\ntouch aclocal.m4\n' > "$fakebin/aclocal"
-	printf '#!/bin/sh\ntouch config.h.in 2>/dev/null; for f in *.h.in; do touch "$f" 2>/dev/null; done; :\n' > "$fakebin/autoheader"
-	printf '#!/bin/sh\nfor a in "$@"; do case "$a" in -*) : ;; *) touch "$a.in" 2>/dev/null || : ;; esac; done; :\n' > "$fakebin/automake"
-	printf '#!/bin/sh\n:\n'                > "$fakebin/autom4te"
-	chmod +x "$fakebin"/*
-	cp "$fakebin/aclocal"  "$fakebin/aclocal-1.9"
-	cp "$fakebin/automake" "$fakebin/automake-1.9"
-	for t in autoreconf autoupdate libtoolize; do cp "$fakebin/autom4te" "$fakebin/$t"; done
-	export PATH="$fakebin:$PATH"
 else
 	echo "Illegal MZNARCH value"
 	exit 1

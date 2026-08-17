@@ -130,24 +130,22 @@ version = "6.9.3"
 track   = { kind = "manual" }
 
 
-# CBC is DEACTIVATED for now: coinbrew's build hits a libtool 2.5.4 bug combining
-# multi-object convenience libraries under MSVC on the hosted windows runner (see the
-# plan). `recipes/cbc.sh` and `[toolchain.coinbrew]` are kept so it can be reactivated
-# once win64 is fixed (self-hosted / pinned-image runner) — just restore this block:
-#
-# [deps.cbc]
-# recipe       = "recipes/cbc.sh"
-# version      = "2.10.13"
-# uses         = ["coinbrew"]
-# artifact_dir = "cbc"
-# platforms    = ["linux", "linux-arm64", "musl", "musl-arm64", "osx", "win64", "wasm"]
-# track        = { kind = "git-tags", repo = "https://github.com/coin-or/Cbc", pattern = 'releases/(\d+\.\d+\.\d+)' }
-# [deps.cbc.env.osx]
-# CFLAGS   = "-arch arm64"
-# CXXFLAGS = "-arch arm64"
-# [deps.cbc.env.win64]
-# CFLAGS   = "-MD -O2"
-# CXXFLAGS = "-MD -O2"
+[deps.cbc]
+recipe       = "recipes/cbc.sh"
+version      = "2.10.13"
+uses         = ["coinbrew"]
+artifact_dir = "cbc"
+# No win64-arm: COIN-OR publishes no ARM64 MSVC package, and building from source
+# there would hit the same libtool bug as win64 plus ARM64 MSVC on top.
+platforms    = ["linux", "linux-arm64", "musl", "musl-arm64", "osx", "win64", "wasm"]
+track        = { kind = "git-tags", repo = "https://github.com/coin-or/Cbc", pattern = 'releases/(\d+\.\d+\.\d+)' }
+[deps.cbc.env.osx]
+CFLAGS   = "-arch arm64"
+CXXFLAGS = "-arch arm64"
+[deps.cbc.env.win64]
+# Prebuilt by COIN-OR: msvc17 is VS2022, matching the runner, and `md` is the
+# dynamic CRT, matching CMake's Release default for MiniZinc itself.
+CBC_MSVC_ASSET = "Cbc-releases.2.10.13-w64-msvc17-md.zip"
 
 [deps.highs]
 recipe       = "recipes/highs.sh"
