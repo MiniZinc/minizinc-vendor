@@ -165,6 +165,8 @@ def env_kv(m: dict, name: str, platform: str) -> list[str]:
     uses = d.get("uses", [])
     if "coinbrew" in uses:
         put("COINBREW_COMMIT", m["toolchain"]["coinbrew"]["commit"])
+    if "rules_pkg" in uses:
+        put("RULES_PKG_VERSION", m["toolchain"]["rules_pkg"]["version"])
     if "bazel" in uses:
         put("BAZEL_VERSION", m["toolchain"]["bazel"]["version"])
         put("BAZELISK_VERSION", m["toolchain"]["bazelisk"]["version"])

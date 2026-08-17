@@ -39,7 +39,8 @@ if [[ "$MZNARCH" == "win64" ]]; then
 fi
 
 # -- Apply the packaging overlay (adds a pkg_install target + cp-sat.msc) -------
-cat "${OVERLAY}/MODULE.bazel" >> "${CI_PROJECT_DIR}/or-tools/MODULE.bazel"
+sed "s|@RULES_PKG_VERSION@|${RULES_PKG_VERSION:?RULES_PKG_VERSION must be set}|" \
+	"${OVERLAY}/MODULE.bazel.in" >> "${CI_PROJECT_DIR}/or-tools/MODULE.bazel"
 cat "${OVERLAY}/BUILD.bazel"  >> "${CI_PROJECT_DIR}/or-tools/ortools/flatzinc/BUILD.bazel"
 
 # Make sure the musl build uses the right python toolchain

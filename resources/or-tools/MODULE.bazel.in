@@ -1,0 +1,4 @@
+# Appended to or-tools' own MODULE.bazel by recipes/or-tools.sh, which fills in
+# the version from [toolchain.rules_pkg]. Do not hardcode it here: the update bot
+# edits the manifest, and a second copy would silently drift out of step.
+bazel_dep(name = "rules_pkg", version = "@RULES_PKG_VERSION@")

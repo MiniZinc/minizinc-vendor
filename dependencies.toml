@@ -108,8 +108,8 @@ version = "v1.29.0"
 track   = { kind = "github-release", repo = "bazelbuild/bazelisk", pattern = '^v(\d+\.\d+\.\d+)$' }
 
 [toolchain.rules_pkg]
-# Consumed via resources/or-tools/MODULE.bazel (bazel_dep). Kept here for tracking;
-# a bump must also edit resources/or-tools/MODULE.bazel.
+# Consumed via resources/or-tools/MODULE.bazel.in, which the recipe fills in from
+# this value -- so a bump here is the whole change.
 version = "1.2.0"
 track   = { kind = "bcr-module", module = "rules_pkg" }
 
