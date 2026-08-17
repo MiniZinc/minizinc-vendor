@@ -12,8 +12,12 @@ on:
       - resources/**
       - scripts/**
 
+# `contents: write` even though nothing is published here (publish: false below):
+# build.yml declares it for its upload step, and a called workflow may only be
+# equal to or more restrictive than its caller. Granting less fails the run at
+# startup, before any job exists -- with no log to say why.
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   changed:
