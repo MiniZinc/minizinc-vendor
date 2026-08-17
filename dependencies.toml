@@ -110,7 +110,7 @@ track   = { kind = "github-release", repo = "bazelbuild/bazelisk", pattern = '^v
 [toolchain.rules_pkg]
 # Consumed via resources/or-tools/MODULE.bazel.in, which the recipe fills in from
 # this value -- so a bump here is the whole change.
-version = "1.2.0"
+version = "1.3.0"
 track   = { kind = "bcr-module", module = "rules_pkg" }
 
 
