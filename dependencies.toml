@@ -51,7 +51,7 @@ triple    = "aarch64-linux-musl"
 setup     = "apk add --no-cache bash build-base cmake ninja git curl autoconf automake libtool pkgconf zlib-dev linux-headers"
 
 [platforms.osx]
-# arm64 host; arm64-only builds (Intel Macs unsupported).
+# arm64 host.
 # macos-26 (AppleClang 21), not macos-14 (AppleClang 15): clang 15 wrongly rejects Gecode
 # 6.4's Pack::calc_dff_lower_bound, where the template parameter `l` shadows Pack's data
 # member `l` in a static member function. Verified accepted by clang 21.
@@ -66,6 +66,23 @@ triple    = "aarch64-apple-darwin"
 # for it (so gecode_gist and the IDE cannot go lower), and arm64 itself bottoms
 # out at macOS 11. CMake reads this; or-tools needs the flag in its .bazelrc.
 MACOSX_DEPLOYMENT_TARGET = "12.0"
+CMAKE_OSX_ARCHITECTURES  = "arm64"
+
+[platforms.osx-intel]
+# Separate package, not a universal binary alongside [platforms.osx] -- kept
+# because it's still requested, dropped from the default recommendation.
+# macos-26-intel: real Intel hardware (not cross-compiled), same AppleClang 21
+# as the arm64 runner -- see [platforms.osx] for why that version matters.
+# GitHub's last-supported Intel macOS image; retires alongside macos-15-intel
+# in fall 2027 (github.blog/changelog, 2026-02-26).
+runner    = "macos-26-intel"
+container = ""
+mznarch   = "osx"
+triple    = "x86_64-apple-darwin"
+
+[platforms.osx-intel.env]
+MACOSX_DEPLOYMENT_TARGET = "12.0"
+CMAKE_OSX_ARCHITECTURES  = "x86_64"
 
 [platforms.win64]
 runner    = "windows-2022"
@@ -137,11 +154,14 @@ uses         = ["coinbrew"]
 artifact_dir = "cbc"
 # No win64-arm: COIN-OR publishes no ARM64 MSVC package, and building from source
 # there would hit the same libtool bug as win64 plus ARM64 MSVC on top.
-platforms    = ["linux", "linux-arm64", "musl", "musl-arm64", "osx", "win64", "wasm"]
+platforms    = ["linux", "linux-arm64", "musl", "musl-arm64", "osx", "osx-intel", "win64", "wasm"]
 track        = { kind = "git-tags", repo = "https://github.com/coin-or/Cbc", pattern = 'releases/(\d+\.\d+\.\d+)' }
 [deps.cbc.env.osx]
 CFLAGS   = "-arch arm64"
 CXXFLAGS = "-arch arm64"
+[deps.cbc.env.osx-intel]
+CFLAGS   = "-arch x86_64"
+CXXFLAGS = "-arch x86_64"
 [deps.cbc.env.win64]
 # Prebuilt by COIN-OR: msvc17 is VS2022, matching the runner, and `md` is the
 # dynamic CRT, matching CMake's Release default for MiniZinc itself.
@@ -151,7 +171,7 @@ CBC_MSVC_ASSET = "Cbc-releases.2.10.13-w64-msvc17-md.zip"
 recipe       = "recipes/highs.sh"
 version      = "v1.15.1"
 artifact_dir = "highs"
-platforms    = ["linux", "linux-arm64", "musl", "musl-arm64", "osx", "win64", "win64-arm", "wasm"]
+platforms    = ["linux", "linux-arm64", "musl", "musl-arm64", "osx", "osx-intel", "win64", "win64-arm", "wasm"]
 track        = { kind = "git-tags", repo = "https://github.com/ERGO-Code/HiGHS", pattern = 'v(\d+\.\d+\.\d+)' }
 
 [deps.or-tools]
@@ -160,7 +180,7 @@ version      = "v9.15"
 uses         = ["bazel", "bazelisk", "rules_pkg"]
 overlay      = "resources/or-tools"     # rebuilt in pr-validate if these files change
 artifact_dir = "or-tools"
-platforms    = ["linux", "linux-arm64", "musl", "musl-arm64", "osx", "win64", "win64-arm"]   # no wasm
+platforms    = ["linux", "linux-arm64", "musl", "musl-arm64", "osx", "osx-intel", "win64", "win64-arm"]   # no wasm
 track        = { kind = "git-tags", repo = "https://github.com/google/or-tools", pattern = 'v(\d+\.\d+)' }
 
 [deps.gecode]
@@ -169,7 +189,7 @@ recipe       = "recipes/gecode.sh"
 # tracked pattern captures the same bare number so the bot compares like for like.
 version      = "6.4.0"
 artifact_dir = "gecode"
-platforms    = ["linux", "linux-arm64", "musl", "musl-arm64", "osx", "win64", "win64-arm", "wasm"]
+platforms    = ["linux", "linux-arm64", "musl", "musl-arm64", "osx", "osx-intel", "win64", "win64-arm", "wasm"]
 track        = { kind = "git-tags", repo = "https://github.com/Gecode/gecode", pattern = 'release-(\d+\.\d+\.\d+)' }
 
 [deps.gecode.env.win64-arm]
@@ -189,7 +209,7 @@ artifact_dir = "gecode_gist"
 # NOT linux-arm64 / musl / wasm: no Qt 6 Linux ARM64 build, Gist needs a GUI which
 # musl/wasm don't have. win64-arm: unverified, first attempt -- Qt does publish an
 # official ARM64 Windows desktop build (install-qt-action host: windows_arm64).
-platforms    = ["linux", "osx", "win64", "win64-arm"]
+platforms    = ["linux", "osx", "osx-intel", "win64", "win64-arm"]
 
 [deps.gecode_gist.env.win64-arm]
 # Same as gecode's win64-arm block: the core sources this recipe also compiles
@@ -200,7 +220,7 @@ CXXFLAGS = "/bigobj /Zc:__cplusplus"
 recipe       = "recipes/chuffed.sh"
 version      = "0.14.0"
 artifact_dir = "chuffed"
-platforms    = ["linux", "linux-arm64", "musl", "musl-arm64", "osx", "win64", "win64-arm", "wasm"]
+platforms    = ["linux", "linux-arm64", "musl", "musl-arm64", "osx", "osx-intel", "win64", "win64-arm", "wasm"]
 track        = { kind = "git-tags", repo = "https://github.com/Chuffed/chuffed", pattern = '^(\d+\.\d+\.\d+)$' }
 
 [deps.openssl]

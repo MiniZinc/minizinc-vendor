@@ -25,7 +25,7 @@ if [[ "$MZNARCH" == "wasm" ]]; then
 else
 	cmake -G"$CMAKEARCH" -DCMAKE_BUILD_TYPE=Release \
 		-DCMAKE_INSTALL_PREFIX="$BUILD_ROOT/vendor/chuffed" "$BUILD_ROOT/chuffed" \
-		-DCMAKE_OSX_ARCHITECTURES="arm64"
+		-DCMAKE_OSX_ARCHITECTURES="${CMAKE_OSX_ARCHITECTURES:-arm64}"
 	cmake --build . --config Release
 	cmake --build . --config Release --target install
 fi

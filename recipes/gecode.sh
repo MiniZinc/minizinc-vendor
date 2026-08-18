@@ -15,7 +15,9 @@ fi
 git -C "$BUILD_ROOT/gecode" checkout --quiet "release-$DEP_VERSION"
 
 DIR="gecode"
-ARCH="arm64"
+# Set per osx platform (arm64 or x86_64); harmless elsewhere, CMake ignores it
+# on non-Apple targets.
+ARCH="${CMAKE_OSX_ARCHITECTURES:-arm64}"
 if [ "${1:-0}" = 1 ]; then
 	ENABLE_GIST=TRUE
 	ENABLE_QT=TRUE

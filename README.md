@@ -68,8 +68,8 @@ own releases uses `GITHUB_TOKEN`.
 ### Platforms
 
 `x86_64-linux-gnu`, `aarch64-linux-gnu`, `x86_64-linux-musl`,
-`aarch64-linux-musl`, `aarch64-apple-darwin`, `x86_64-windows`,
-`aarch64-windows`, `wasm32-emscripten`.
+`aarch64-linux-musl`, `aarch64-apple-darwin`, `x86_64-apple-darwin`,
+`x86_64-windows`, `aarch64-windows`, `wasm32-emscripten`.
 
 Not every dependency covers every platform; see each `platforms` list in the
 manifest. To move one platform to a self-hosted runner, change its `runner`

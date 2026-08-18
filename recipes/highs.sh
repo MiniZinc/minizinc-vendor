@@ -25,7 +25,7 @@ if [[ "$MZNARCH" == "wasm" ]]; then
 else
 	cmake -G"$CMAKEARCH" -DCMAKE_BUILD_TYPE=Release \
 		-DCMAKE_INSTALL_PREFIX="$BUILD_ROOT/vendor/highs" "$BUILD_ROOT/highs" \
-		-DCMAKE_OSX_ARCHITECTURES="arm64" -DBUILD_SHARED_LIBS=ON -DFAST_BUILD=ON
+		-DCMAKE_OSX_ARCHITECTURES="${CMAKE_OSX_ARCHITECTURES:-arm64}" -DBUILD_SHARED_LIBS=ON -DFAST_BUILD=ON
 	cmake --build . --config Release
 	cmake --build . --config Release --target install
 fi
