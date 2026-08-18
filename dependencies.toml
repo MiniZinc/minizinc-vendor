@@ -184,9 +184,17 @@ CXXFLAGS = "/bigobj /Zc:__cplusplus"
 recipe       = "recipes/gecode.sh"
 gist         = true             # → gecode.sh 1
 source_of    = "gecode"         # shares gecode's commit; never pinned independently
-uses         = ["qt"]           # Qt: aqtinstall (linux container) / install-qt-action (osx, win64)
+uses         = ["qt"]           # Qt: aqtinstall (linux container) / install-qt-action (osx, win64*)
 artifact_dir = "gecode_gist"
-platforms    = ["linux", "osx", "win64"]   # NOT arm64 / musl / wasm
+# NOT linux-arm64 / musl / wasm: no Qt 6 Linux ARM64 build, Gist needs a GUI which
+# musl/wasm don't have. win64-arm: unverified, first attempt -- Qt does publish an
+# official ARM64 Windows desktop build (install-qt-action host: windows_arm64).
+platforms    = ["linux", "osx", "win64", "win64-arm"]
+
+[deps.gecode_gist.env.win64-arm]
+# Same as gecode's win64-arm block: the core sources this recipe also compiles
+# for Gist hit the same MSVC ARM64 issues (see [deps.gecode.env.win64-arm]).
+CXXFLAGS = "/bigobj /Zc:__cplusplus"
 
 [deps.chuffed]
 recipe       = "recipes/chuffed.sh"

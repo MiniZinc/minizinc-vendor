@@ -122,6 +122,10 @@ jobs:
         uses: jurplel/install-qt-action@v4
         with:
           version: ${{ matrix.qt_version }}
+          # Empty host lets the action auto-detect from the runner OS, which is
+          # right for every host except windows-11-arm: that still reports as
+          # plain "Windows", so it would otherwise pull x64 Qt onto an arm64 build.
+          host: ${{ matrix.platform == 'win64-arm' && 'windows_arm64' || '' }}
 
       - name: Set up MSVC (win64)
         if: startsWith(matrix.platform, 'win64')
