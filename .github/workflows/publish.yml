@@ -18,9 +18,8 @@ permissions:
   contents: write
 
 env:
-  # The libminizinc branch that carries the GitHub Actions setup, and so the one
-  # the bump PRs target. Becomes `develop` once the migration branch is merged.
-  LIBMZN_BRANCH: feat/github_actions
+  # The libminizinc branch the bump PRs target.
+  LIBMZN_BRANCH: develop
 
 jobs:
   publish:
