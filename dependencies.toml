@@ -191,6 +191,7 @@ recipe       = "recipes/gecode.sh"
 # `version` is the bare number; the recipe checks out `release-$DEP_VERSION`. The
 # tracked pattern captures the same bare number so the bot compares like for like.
 version      = "6.4.0"
+rebuild      = 1
 artifact_dir = "gecode"
 platforms    = ["linux", "linux-arm64", "musl", "musl-arm64", "osx", "osx-intel", "win64", "win64-arm", "wasm"]
 track        = { kind = "git-tags", repo = "https://github.com/Gecode/gecode", pattern = 'release-(\d+\.\d+\.\d+)' }

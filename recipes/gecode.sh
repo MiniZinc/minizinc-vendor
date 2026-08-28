@@ -36,6 +36,12 @@ cd build/$DIR
 
 # Gecode 6.4 renamed these options with a GECODE_ prefix; the unprefixed ones
 # are silently ignored, which produced shared-only builds.
+#
+# GECODE_ENABLE_MPFR defaults to ON and is satisfied by whatever the runner
+# happens to have, so the macOS builds silently picked up Homebrew's libmpfr and
+# exported an MPFR::MPFR link requirement to downstream. Keep it off everywhere:
+# MPFR only adds transcendental float constraints, and the artifacts must not
+# depend on libraries we do not ship.
 if [[ "$MZNARCH" == "wasm" ]]; then
 	# Gist and CP-Profiler are unavailable under emscripten.
 	emcmake cmake -G"Unix Makefiles" "$BUILD_ROOT/gecode" \
@@ -43,7 +49,7 @@ if [[ "$MZNARCH" == "wasm" ]]; then
 		-DCMAKE_INSTALL_PREFIX="$BUILD_ROOT/vendor/$DIR" \
 		-DGECODE_BUILD_SHARED=OFF -DGECODE_BUILD_STATIC=ON \
 		-DGECODE_ENABLE_GIST=FALSE -DGECODE_ENABLE_QT=FALSE \
-		-DGECODE_ENABLE_CPPROFILER=FALSE
+		-DGECODE_ENABLE_CPPROFILER=FALSE -DGECODE_ENABLE_MPFR=FALSE
 	cmake --build . --config MinSizeRel
 	cmake --build . --config MinSizeRel --target install
 else
@@ -53,6 +59,7 @@ else
 		-DGECODE_BUILD_SHARED=OFF -DGECODE_BUILD_STATIC=ON \
 		-DGECODE_ENABLE_GIST=${ENABLE_GIST} -DGECODE_ENABLE_QT=${ENABLE_QT} \
 		-DGECODE_ENABLE_CPPROFILER=TRUE \
+		-DGECODE_ENABLE_MPFR=FALSE \
 		-DCMAKE_OSX_ARCHITECTURES=${ARCH}
 	cmake --build . --config Release
 	cmake --build . --config Release --target install
