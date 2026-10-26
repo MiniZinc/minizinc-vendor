@@ -112,7 +112,7 @@ triple    = "wasm32-emscripten"
 # Replaces the historic unpinned `curl .../coinbrew/master/coinbrew` in cbc.sh.
 # coinbrew has no recent release (last tag v2.0 is from 2022 and lacks Windows
 # fixes), so we pin a `master` commit and let the bot track the branch head.
-commit = "50539b4ea785cb2088366dc7f26930ec5c5b4546"
+commit = "f624b48e996831ea98d6c40cfa3efeb980dc3b0b"
 track  = { kind = "branch-head", repo = "https://github.com/coin-or/coinbrew", branch = "master" }
 
 [toolchain.bazel]
