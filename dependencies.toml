@@ -120,7 +120,7 @@ track  = { kind = "branch-head", repo = "https://github.com/coin-or/coinbrew", b
 # there (bazelbuild/bazel#28520, a JDK virtual-thread bug). The fixed JDK ships from
 # 9.0.1, and 9.0.2 is the first release whose windows-arm64 package is not carrying
 # amd64 DLLs (#28941). Ignored on musl, where the recipe uses Alpine's bazel8 package.
-version = "9.2.0"
+version = "9.3.1"
 track   = { kind = "github-release", repo = "bazelbuild/bazel", pattern = '^(\d+\.\d+\.\d+)$' }
 
 [toolchain.bazelisk]
