@@ -14,13 +14,11 @@ set -x
 export USE_BAZEL_VERSION="${BAZEL_VERSION}"
 OVERLAY="${BUILD_ROOT}/resources/or-tools"
 
-# -- Install a pinned Bazel launcher (bazelisk), or apk bazel8 on Alpine/musl ---
-# Alpine packages no bazel9, so musl ignores BAZEL_VERSION and builds with 8.
+# -- Install a pinned Bazel launcher (bazelisk), or apk bazel on Alpine/musl ----
+# Alpine's package supplies Bazel directly, so musl ignores BAZEL_VERSION.
 if [ -f /etc/alpine-release ]; then
 	apk --no-cache add linux-headers python3
-	apk add --no-cache -X https://dl-cdn.alpinelinux.org/alpine/edge/testing bazel8
-	# provide a `bazel` alias for the invocation below
-	command -v bazel >/dev/null || ln -sf "$(command -v bazel8)" /usr/local/bin/bazel
+	apk add --no-cache -X https://dl-cdn.alpinelinux.org/alpine/edge/testing bazel
 else
 	: "${BAZELISK_ASSET:?BAZELISK_ASSET must be set on non-alpine platforms}"
 	mkdir -p "${BUILD_ROOT}/.bin"

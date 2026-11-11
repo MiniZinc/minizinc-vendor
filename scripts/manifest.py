@@ -50,7 +50,7 @@ QT_DIR=${{QT_DIR%/}}
 export PATH="$QT_DIR/bin:$PATH"
 export CMAKE_PREFIX_PATH="$QT_DIR:${{CMAKE_PREFIX_PATH:-}}\""""
 
-# bazelisk release asset per platform (empty => Alpine/musl uses `apk add bazel8`).
+# bazelisk release asset per platform (empty => Alpine/musl uses `apk add bazel`).
 BAZELISK_ASSET = {
     "linux": "linux-amd64",
     "linux-arm64": "linux-arm64",
