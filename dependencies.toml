@@ -172,7 +172,7 @@ CBC_MSVC_ASSET = "Cbc-releases.2.10.13-w64-msvc17-md.zip"
 
 [deps.highs]
 recipe       = "recipes/highs.sh"
-version      = "v1.15.1"
+version = "v1.16.0"
 artifact_dir = "highs"
 platforms    = ["linux", "linux-arm64", "musl", "musl-arm64", "osx", "osx-intel", "win64", "win64-arm", "wasm"]
 track        = { kind = "git-tags", repo = "https://github.com/ERGO-Code/HiGHS", pattern = 'v(\d+\.\d+\.\d+)' }
