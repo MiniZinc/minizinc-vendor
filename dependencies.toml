@@ -179,7 +179,7 @@ track        = { kind = "git-tags", repo = "https://github.com/ERGO-Code/HiGHS",
 
 [deps.or-tools]
 recipe       = "recipes/or-tools.sh"
-version      = "v9.15"
+version = "v10.0"
 uses         = ["bazel", "bazelisk", "rules_pkg"]
 overlay      = "resources/or-tools"     # rebuilt in pr-validate if these files change
 artifact_dir = "or-tools"
